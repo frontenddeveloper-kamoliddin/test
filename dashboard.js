@@ -40,6 +40,7 @@ onAuthStateChanged(auth, (user) => {
   } else {
     showSidebarUser();
     loadDebtors();
+    loadAddedSearchUsers(); // <-- Qo‘shildi
   }
 });
 
@@ -667,7 +668,41 @@ function renderAddedSearchUsers() {
       const userId = this.getAttribute('data-id');
       addedSearchUsers = addedSearchUsers.filter(u => u.id !== userId);
       renderAddedSearchUsers();
+      saveAddedSearchUsers(); // <-- Qo‘shildi
     };
   });
+  saveAddedSearchUsers(); // <-- Qo‘shildi
 }
+
+// addedSearchUsers massivini Firebase'da saqlash va olish
+async function saveAddedSearchUsers() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const userRef = doc(db, "users", user.uid);
+  await updateDoc(userRef, { addedSearchUsers });
+}
+
+async function loadAddedSearchUsers() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+  if (snap.exists() && Array.isArray(snap.data().addedSearchUsers)) {
+    addedSearchUsers = snap.data().addedSearchUsers;
+    renderAddedSearchUsers();
+  }
+}
+
+// Search orqali qo‘shishda ham saqlash
+document.querySelectorAll('.add-search-user-btn').forEach(btn => {
+  btn.onclick = function() {
+    const userId = this.getAttribute('data-id');
+    const user = allUsers.find(u => u.id === userId);
+    if (user && !addedSearchUsers.some(u => u.id === user.id)) {
+      addedSearchUsers.push(user);
+      renderAddedSearchUsers();
+      saveAddedSearchUsers(); // <-- Qo‘shildi
+    }
+  };
+});
 
