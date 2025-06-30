@@ -402,6 +402,7 @@ function openDebtorModal(debtor) {
         product,
         note,
         date: Timestamp.now(),
+        authorId: auth.currentUser.uid // <-- Qo‘shildi
       }),
     });
     
@@ -434,6 +435,7 @@ function openDebtorModal(debtor) {
         amount: val,
         note,
         date: Timestamp.now(),
+        authorId: auth.currentUser.uid // <-- Qo‘shildi
       }),
     });
     
@@ -648,7 +650,7 @@ function renderAddedSearchUsers() {
     debtorsList.parentNode.insertBefore(container, debtorsList);
   }
   container.innerHTML = addedSearchUsers.map((user, idx) => `
-    <div class="flex items-center gap-3 bg-purple-100 dark:bg-purple-900 border-2 border-purple-400 rounded-lg p-4 shadow-lg">
+    <div class="flex items-center gap-3 bg-purple-100 dark:bg-purple-900 border-2 border-purple-400 rounded-lg p-4 shadow-lg" style="z-index:10; position:relative;">
       <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xl">
         ${user.name.slice(0,2).toUpperCase()}
       </div>
@@ -786,6 +788,7 @@ function renderAddedSearchUsers() {
               product,
               note,
               date: Timestamp.now(),
+              authorId: auth.currentUser.uid // <-- Qo‘shildi
             }),
           });
           // YANGI: yangilangan debtor obyektini olib, modalga uzatamiz
@@ -818,6 +821,7 @@ function renderAddedSearchUsers() {
               amount,
               note,
               date: Timestamp.now(),
+              authorId: auth.currentUser.uid // <-- Qo‘shildi
             }),
           });
           modal.remove();
@@ -895,4 +899,73 @@ document.querySelectorAll('.add-search-user-btn').forEach(btn => {
     }
   };
 });
+
+// "Mening qarzlarim" tugmasi bosilganda sizga yozilgan qarzlarni ko‘rsatish
+document.getElementById('myDebtsBtn').onclick = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  // Foydalanuvchi ma'lumotlarini olish (sidebarUserCode uchun)
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+  const sidebarUserCode = userSnap.exists() ? (userSnap.data().sidebarUserCode || user.uid) : user.uid;
+
+  // Sizga yozilgan qarzlarni topamiz (faqat o‘zining ID yoki sidebarUserCode bo‘yicha)
+  const debtorsSnap = await getDocs(collection(db, "debtors"));
+  const myDebts = [];
+  debtorsSnap.forEach(docu => {
+    const d = docu.data();
+    if (
+      (d.code && d.code === sidebarUserCode) ||
+      (d.userId && d.userId === sidebarUserCode)
+    ) {
+      myDebts.push({ ...d, id: docu.id });
+    }
+  });
+
+  // Kim yozganini aniqlash uchun barcha userlarni yuklab olamiz
+  const usersSnap = await getDocs(collection(db, "users"));
+  const usersMap = {};
+  usersSnap.forEach(u => {
+    usersMap[u.id] = u.data().name || "Noma'lum";
+    if (u.data().sidebarUserCode) {
+      usersMap[u.data().sidebarUserCode] = u.data().name || "Noma'lum";
+    }
+  });
+
+  // Modalga chiqaramiz
+  const myDebtsList = document.getElementById('myDebtsList');
+  myDebtsList.innerHTML = myDebts.length
+    ? myDebts.map(d => {
+        // Faqat o'zi yozgan harakatlarni chiqarish
+        const historyHtml = (d.history || [])
+          .filter(h => (h.authorId || d.userId) === user.uid) // <-- Faqat o'zi yozganlar
+          .map(h => {
+            const authorId = h.authorId || d.userId;
+            const authorName = usersMap[authorId] || authorId || "-";
+            return `
+              <div class="p-2 rounded mb-1 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
+                <b>${h.type === "add" ? "+" : "-"}${h.amount} so‘m</b>
+                <span class="text-xs text-gray-500 ml-2">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
+                <div class="text-xs text-gray-400">${h.note || ""}</div>
+                <div class="text-xs text-gray-500">Kim yozgan: <b>${authorName}</b></div>
+              </div>
+            `;
+          }).join("");
+        return `
+          <div class="p-3 rounded bg-gray-100 dark:bg-gray-700 mb-4">
+            <div class="text-xs text-gray-400 mb-1">ID: <b>${d.code || d.userId || "-"}</b></div>
+            <div class="mt-2">${historyHtml || "<span class='text-gray-400'>Faqat o'zingiz yozgan harakatlar ko‘rsatiladi</span>"}</div>
+          </div>
+        `;
+      }).join("")
+    : `<div class="text-center text-gray-500">Sizga yozilgan qarzlar topilmadi.</div>`;
+
+  document.getElementById('myDebtsModal').classList.remove('hidden');
+};
+
+// Modalni yopish
+document.getElementById('closeMyDebtsModal').onclick = () => {
+  document.getElementById('myDebtsModal').classList.add('hidden');
+};
 
