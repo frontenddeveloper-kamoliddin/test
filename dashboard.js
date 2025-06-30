@@ -937,25 +937,24 @@ document.getElementById('myDebtsBtn').onclick = async () => {
   const myDebtsList = document.getElementById('myDebtsList');
   myDebtsList.innerHTML = myDebts.length
     ? myDebts.map(d => {
-        // Faqat o'zi yozgan harakatlarni chiqarish
-        const historyHtml = (d.history || [])
-          .filter(h => (h.authorId || d.userId) === user.uid) // <-- Faqat o'zi yozganlar
-          .map(h => {
-            const authorId = h.authorId || d.userId;
-            const authorName = usersMap[authorId] || authorId || "-";
-            return `
-              <div class="p-2 rounded mb-1 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
-                <b>${h.type === "add" ? "+" : "-"}${h.amount} so‘m</b>
-                <span class="text-xs text-gray-500 ml-2">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
-                <div class="text-xs text-gray-400">${h.note || ""}</div>
-                <div class="text-xs text-gray-500">Kim yozgan: <b>${authorName}</b></div>
-              </div>
-            `;
-          }).join("");
+        // Tarixini chiqarish va har bir harakatni kim yozganini aniqlash
+        const historyHtml = (d.history || []).map(h => {
+          // Harakatni yozgan userId
+          const authorId = h.authorId || d.userId;
+          const authorName = usersMap[authorId] || authorId || "-";
+          return `
+            <div class="p-2 rounded mb-1 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
+              <b>${h.type === "add" ? "+" : "-"}${h.amount} so‘m</b>
+              <span class="text-xs text-gray-500 ml-2">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
+              <div class="text-xs text-gray-400">${h.note || ""}</div>
+              <div class="text-xs text-gray-500">Kim yozgan: <b>${authorName}</b></div>
+            </div>
+          `;
+        }).join("");
         return `
           <div class="p-3 rounded bg-gray-100 dark:bg-gray-700 mb-4">
             <div class="text-xs text-gray-400 mb-1">ID: <b>${d.code || d.userId || "-"}</b></div>
-            <div class="mt-2">${historyHtml || "<span class='text-gray-400'>Faqat o'zingiz yozgan harakatlar ko‘rsatiladi</span>"}</div>
+            <div class="mt-2">${historyHtml || "<span class='text-gray-400'>Tarix yo‘q</span>"}</div>
           </div>
         `;
       }).join("")
