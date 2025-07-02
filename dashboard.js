@@ -292,11 +292,17 @@ function openDebtorModal(debtor) {
   debtorModal.classList.remove("hidden");
   let addHistory = "", subHistory = "";
   let totalAdd = 0, totalSub = 0;
-  
-  (debtor.history || []).forEach((h) => {
+
+  // Faqat o'zining yozganlarini ko'rsatish
+  const currentUserId = auth.currentUser.uid;
+  const filteredHistory = (debtor.history || []).filter(
+    h => (h.authorId ? h.authorId === currentUserId : debtor.userId === currentUserId)
+  );
+
+  filteredHistory.forEach((h) => {
     const date = h.date?.toDate ? h.date.toDate() : new Date();
     const time = date.toLocaleString("uz-UZ");
-    
+
     if (h.type === "add") {
       addHistory += `
         <div class="bg-green-100 dark:bg-green-900 rounded p-2 mb-2">
@@ -309,7 +315,7 @@ function openDebtorModal(debtor) {
         </div>`;
       totalAdd += h.amount;
     }
-    
+
     if (h.type === "sub") {
       subHistory += `
         <div class="bg-red-100 dark:bg-red-900 rounded p-2 mb-2">
@@ -321,46 +327,51 @@ function openDebtorModal(debtor) {
   });
   
   modalContent.innerHTML = `
-    <div class="flex flex-col md:flex-row gap-4 mb-4">
-      <div class="flex-1">
-        <div class="font-bold text-xl mb-2">${debtor.name}</div>
-        <div class="text-gray-500 dark:text-gray-300 mb-2">${debtor.product} (${debtor.count} x ${debtor.price} so‘m)</div>
-        <div class="text-xs text-gray-400 mb-2">${debtor.note || ""}</div>
-        <div class="mb-2">Umumiy qarz: <span class="font-bold">${totalAdd - totalSub} so‘m</span></div>
-        
-        <form id="addDebtForm" class="flex flex-col gap-2 mb-2">
-          <div class="grid grid-cols-1 gap-2">
-            <input type="text" placeholder="Mahsulot nomi" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
-            <input type="number" minlength="" placeholder="Mahsulot soni" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
-            <input type="number" min="1" placeholder="Mahsulot narxi" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100" required>
-            <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
-          </div>
-          <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded">Qo‘shish</button>
-        </form>
-        
-        <form id="subDebtForm" class="flex flex-col gap-2 mb-2">
-          <input type="number" min="1" placeholder="Qarz ayirish (so‘m)" 
-            class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100" required>
-          <input type="text" placeholder="Izoh (ixtiyoriy)" 
-            class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100">
-          <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Ayirish</button>
-        </form>
-      </div>
+  <div class="flex flex-col md:flex-row gap-4 mb-4">
+    <div class="flex-1">
+      <div class="font-bold text-xl mb-2">${debtor.name}</div>
+      <div class="text-gray-500 dark:text-gray-300 mb-2">${debtor.product} (${debtor.count} x ${debtor.price} so‘m)</div>
+      <div class="text-xs text-gray-400 mb-2">${debtor.note || ""}</div>
+      <div class="mb-2">Umumiy qarz: <span class="font-bold">${totalAdd - totalSub} so‘m</span></div>
       
-      <div class="flex-1">
-        <div class="font-bold mb-2">Qo‘shilganlar</div>
-        ${addHistory || '<div class="text-gray-400">Yo‘q</div>'}
-        <div class="font-bold mb-2 mt-4">Ayirilganlar</div>
-        ${subHistory || '<div class="text-gray-400">Yo‘q</div>'}
-      </div>
+      <form id="addDebtForm" class="flex flex-col gap-2 mb-2">
+        <div class="grid grid-cols-1 gap-2">
+          <input type="text" placeholder="Mahsulot nomi" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
+          <input type="number" minlength="" placeholder="Mahsulot soni" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
+          <input type="number" min="1" placeholder="Mahsulot narxi" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100" required>
+          <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
+        </div>
+        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded">Qo‘shish</button>
+      </form>
+      
+      <form id="subDebtForm" class="flex flex-col gap-2 mb-2">
+        <input type="number" min="1" placeholder="Qarz ayirish (so‘m)" 
+          class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100" required>
+        <input type="text" placeholder="Izoh (ixtiyoriy)" 
+          class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100">
+        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Ayirish</button>
+      </form>
+      ${
+        (totalAdd - totalSub) > 0
+          ? `<button id="finishDebtBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded mt-2 w-full">Qarz tugatish</button>`
+          : ""
+      }
     </div>
     
-    <div class="mt-4 flex flex-col md:flex-row justify-between font-bold gap-2">
-      <span>Jami qo‘shilgan: ${totalAdd} so‘m</span>
-      <span>Jami ayirilgan: ${totalSub} so‘m</span>
-      <span>Qarzdorlik: ${totalAdd - totalSub} so‘m</span>
+    <div class="flex-1">
+      <div class="font-bold mb-2">Qo‘shilganlar</div>
+      ${addHistory || '<div class="text-gray-400">Yo‘q</div>'}
+      <div class="font-bold mb-2 mt-4">Ayirilganlar</div>
+      ${subHistory || '<div class="text-gray-400">Yo‘q</div>'}
     </div>
-  `;
+  </div>
+  
+  <div class="mt-4 flex flex-col md:flex-row justify-between font-bold gap-2">
+    <span>Jami qo‘shilgan: ${totalAdd} so‘m</span>
+    <span>Jami ayirilgan: ${totalSub} so‘m</span>
+    <span>Qarzdorlik: ${totalAdd - totalSub} so‘m</span>
+  </div>
+`;
 
   // Add debt form handler
   modalContent.querySelector("#addDebtForm").onsubmit = async (e) => {
@@ -446,6 +457,31 @@ function openDebtorModal(debtor) {
     openDebtorModal({ ...updated, id: debtor.id });
     loadDebtors();
   };
+
+  // Qarz tugatish tugmasi uchun event
+  if ((totalAdd - totalSub) > 0) {
+    const finishBtn = modalContent.querySelector("#finishDebtBtn");
+    if (finishBtn) {
+      finishBtn.onclick = async () => {
+        if (!(await showConfirmDiv("Qarz tugatilsinmi?"))) return;
+        const ref = doc(db, "debtors", debtor.id);
+        await updateDoc(ref, {
+          history: arrayUnion({
+            type: "sub",
+            amount: totalAdd - totalSub,
+            note: "Qarz tugatildi",
+            date: Timestamp.now(),
+            authorId: auth.currentUser.uid
+          }),
+        });
+        const updated = (await getDocs(collection(db, "debtors"))).docs
+          .find((docu) => docu.id === debtor.id)
+          .data();
+        openDebtorModal({ ...updated, id: debtor.id });
+        loadDebtors();
+      };
+    }
+  }
 }
 
 // Sidebar user info
