@@ -178,10 +178,45 @@ async function loadDebtors() {
   renderDebtors(debtors);
 }
 
-// Render statistics
-function renderStats(debtors) {
+// 1. Umumiy search user statistikani olish uchun yordamchi funksiya
+async function getAddedSearchUsersTotals() {
+  let totalAllAdded = 0, totalAllSub = 0, totalAllDebt = 0;
+  for (let idx = 0; idx < addedSearchUsers.length; idx++) {
+    const user = addedSearchUsers[idx];
+    let totalAdded = 0, totalSub = 0;
+    const debtorsSnap = await getDocs(collection(db, "debtors"));
+    const debtor = debtorsSnap.docs
+      .map(doc => ({ ...doc.data(), id: doc.id }))
+      .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
+
+    if (debtor) {
+      if (typeof debtor.totalAdded === "number") {
+        totalAdded = debtor.totalAdded;
+      } else {
+        (debtor.history || []).forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+        });
+      }
+      if (typeof debtor.totalSubtracted === "number") {
+        totalSub = debtor.totalSubtracted;
+      } else {
+        (debtor.history || []).forEach(h => {
+          if (h.type === "sub") totalSub += h.amount || 0;
+        });
+      }
+    }
+    const remaining = totalAdded - totalSub;
+    totalAllAdded += totalAdded;
+    totalAllSub += totalSub;
+    totalAllDebt += remaining;
+  }
+  return { totalAllAdded, totalAllSub, totalAllDebt };
+}
+
+// 2. renderStats funksiyasini o‘zgartiring:
+async function renderStats(debtors) {
   let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
-  
+
   debtors.forEach((d) => {
     let add = 0, sub = 0;
     d.history?.forEach((h) => {
@@ -192,7 +227,13 @@ function renderStats(debtors) {
     totalSubtracted += sub;
     totalDebt += add - sub;
   });
-  
+
+  // Search orqali qo‘shilgan userlar statistikasi ham qo‘shilsin
+  const { totalAllAdded, totalAllSub, totalAllDebt } = await getAddedSearchUsersTotals();
+  totalAdded += totalAllAdded;
+  totalSubtracted += totalAllSub;
+  totalDebt += totalAllDebt;
+
   document.getElementById("totalAdded").innerText = totalAdded + " so‘m";
   document.getElementById("totalSubtracted").innerText = totalSubtracted + " so‘m";
   document.getElementById("totalDebt").innerText = totalDebt + " so‘m";
@@ -708,15 +749,14 @@ async function renderAddedSearchUsers() {
   container.innerHTML = '';
   for (let idx = 0; idx < addedSearchUsers.length; idx++) {
     const user = addedSearchUsers[idx];
-    // Qarzdorni topamiz
-    let totalAdded = 0;
+    let totalAdded = 0, totalSub = 0;
     const debtorsSnap = await getDocs(collection(db, "debtors"));
     const debtor = debtorsSnap.docs
       .map(doc => ({ ...doc.data(), id: doc.id }))
       .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
 
     if (debtor) {
-      // Avval totalAdded maydonidan, bo‘lmasa history dan hisoblab olamiz
+      // Avval totalAdded va totalSubtracted maydonidan, bo‘lmasa history dan hisoblab olamiz
       if (typeof debtor.totalAdded === "number") {
         totalAdded = debtor.totalAdded;
       } else {
@@ -724,7 +764,16 @@ async function renderAddedSearchUsers() {
           if (h.type === "add") totalAdded += h.amount || 0;
         });
       }
+      if (typeof debtor.totalSubtracted === "number") {
+        totalSub = debtor.totalSubtracted;
+      } else {
+        (debtor.history || []).forEach(h => {
+          if (h.type === "sub") totalSub += h.amount || 0;
+        });
+      }
     }
+
+    const remaining = totalAdded - totalSub;
 
     container.innerHTML += `
       <div class="flex items-center gap-3 rounded-xl p-4 shadow-lg border border-white/30 bg-white/30 backdrop-blur-xl" style="z-index:10; position:relative;">
@@ -739,6 +788,12 @@ async function renderAddedSearchUsers() {
           <div class="text-xs text-gray-500">ID: ${user.id}</div>
           <div class="mt-1 font-bold text-base text-gray-900">
             Jami qo‘shilgan: ${totalAdded} so‘m
+          </div>
+          <div class="mt-1 font-bold text-base text-red-700">
+            Jami ayirilgan: ${totalSub} so‘m
+          </div>
+          <div class="mt-1 font-bold text-base text-blue-700">
+            Qolgan qarzdorlik: ${remaining} so‘m
           </div>
         </div>
         <button class="batafsil-search-user-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded mr-2 shadow" data-id="${user.id}">Batafsil</button>
@@ -931,4 +986,5 @@ if (typeof d.totalAdded !== "number") {
   // Istasangiz, Firebase'ga ham yozib qo‘ying:
   updateDoc(doc(db, "debtors", d.id), { totalAdded: totalAdd });
 }
+
 
