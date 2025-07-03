@@ -46,13 +46,19 @@
 }
   </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+<body class="min-h-screen" style="background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80') center center / cover no-repeat fixed;">
 
-  <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-800 shadow-lg z-30 transform -translate-x-full transition-transform duration-300">
-    <div class="flex items-center justify-between p-4 border-b dark:border-gray-700">
+  <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300">
+    <div class="flex items-center justify-between p-4 border-b">
       <div>
+        <!-- Dark mode toggle button -->
+        <button id="toggleDark" class="mr-2 text-gray-500 hover:text-black transition text-xl" title="Dark mode">
+          <svg id="darkIcon" xmlns="http://www.w3.org/2000/svg" class="inline w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+          </svg>
+        </button>
         <span id="userName" class="font-bold text-lg"></span>
-        <span id="userId" class="text-xs text-gray-500 ml-2"></span>
+        <span id="userId" class="text-xs text-white ml-2"></span>
       </div>
       <button id="closeSidebar" class="text-gray-500 hover:text-red-500">&times;</button>
     </div>
@@ -65,39 +71,39 @@
  
   <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-40 z-20 hidden"></div>
 
-  <div class="min-h-screen flex flex-col items-center justify-start pt-6">
+  <div class="min-h-screen flex flex-col items-center justify-start pt-6 bg-white/30 backdrop-blur-2xl">
 
     <div class="w-full max-w-3xl flex items-center justify-between mb-6 px-4">
-      <button id="openSidebar" class="text-2xl text-gray-700 dark:text-gray-200">&#9776;</button>
+      <button id="openSidebar" class="text-2xl text-gray-700">&#9776;</button>
       <h2 class="text-2xl text-[white] font-bold text-center flex-1">Qarzdorlar Dashboard</h2>
     </div>
 
     <div class="w-full max-w-3xl mb-4 px-4">
-      <input id="searchInput" type="text" placeholder="Qarzdorni qidiring..." class="w-full p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-gray-100">
+      <input id="searchInput" type="text" placeholder="Qarzdorni qidiring..." class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
     </div>
 
-    <form id="debtorForm" class="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-6 space-y-4">
+    <form id="debtorForm" class="w-full max-w-3xl bg-gray-200 rounded-lg shadow-lg p-4 mb-6 space-y-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input id="debtorName" type="text" placeholder="Ism" required class="p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-gray-100">
-        <input id="debtorProduct" type="text" placeholder="Mahsulot nomi"  class="p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-gray-100">
-        <input id="debtorCount" type="number" minlength=""  placeholder="Mahsulot soni"  class="p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-gray-100">
-        <input id="debtorPrice" type="number" min="1" placeholder="Mahsulot narxi" required class="p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-gray-100">
+        <input id="debtorName" type="text" placeholder="Ism" required class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+        <input id="debtorProduct" type="text" placeholder="Mahsulot nomi"  class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+        <input id="debtorCount" type="number" minlength=""  placeholder="Mahsulot soni"  class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+        <input id="debtorPrice" type="number" min="1" placeholder="Mahsulot narxi" required class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
       </div>
       
-      <input id="debtorNote" type="text" placeholder="Qo'shimcha izoh (ixtiyoriy)" class="w-full p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-gray-100">
+      <input id="debtorNote" type="text" placeholder="Qo'shimcha izoh (ixtiyoriy)" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
       <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Qarzdor qo'shish</button>
     </form>
 
     <div class="w-full max-w-3xl flex flex-col md:flex-row gap-4 mb-4 px-4">
-      <div class="flex-1 bg-blue-100 dark:bg-blue-900 rounded-lg p-4 text-center">
+      <div class="flex-1 bg-blue-100 rounded-lg p-4 text-center">
         <div class="text-lg font-bold">Umumiy qo‘shilgan</div>
         <div id="totalAdded" class="text-2xl font-bold mt-2">0 so‘m</div>
       </div>
-      <div class="flex-1 bg-red-100 dark:bg-red-900 rounded-lg p-4 text-center">
+      <div class="flex-1 bg-red-100 rounded-lg p-4 text-center">
         <div class="text-lg font-bold">Umumiy ayirilgan</div>
         <div id="totalSubtracted" class="text-2xl font-bold mt-2">0 so‘m</div>
       </div>
-      <div class="flex-1 bg-green-100 dark:bg-green-900 rounded-lg p-4 text-center">
+      <div class="flex-1 bg-green-100 rounded-lg p-4 text-center">
         <div class="text-lg font-bold">Umumiy qarzdorlik</div>
         <div id="totalDebt" class="text-2xl font-bold mt-2">0 so‘m</div>
       </div>
@@ -107,48 +113,142 @@
     <!-- Loader ustida chiqadigan "Qarzdorlar topilmadi" -->
     <div
       id="noDebtorsFound"
-      class="hidden absolute left-1/2 top-[580px] -translate-x-1/2 z-[10] bg-gray-900 text-gray-100 rounded-lg text-xl font-semibold   flex items-center justify-center"
-      style="height: 100px;;width:750px;"
+      class="hidden absolute left-1/2 top-[580px] -translate-x-1/2 z-[10] bg-white/90 text-gray-700 rounded-xl text-2xl font-bold shadow-lg border border-gray-300 flex items-center justify-center"
+      style="height: 100px; width: 420px; letter-spacing: 1px;"
     >
+      <svg class="w-8 h-8 mr-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path stroke="currentColor" stroke-width="2" d="M8 12h8M12 8v8"/>
+      </svg>
       Qarzdorlar topilmadi
     </div>
 
-    <div id="debtorsList" class="w-full max-w-3xl space-y-4 px-4 mb-10"></div>
-    <div class="batafsil-qarzdorliklar">
-   
-    </div>
+    <div id="debtorsList" class="w-full max-w-3xl space-y-6 px-4 mb-10"></div>
+    <div class="batafsil-qarzdorliklar"></div>
   </div>
  
   <div id="debtorModal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl p-6 relative batafsil-modal">
-      <button id="closeModal" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">&times;</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
       <div id="modalContent"></div>
     </div>
   </div>
   <div id="myDebtsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6 relative batafsil-modal">
-      <button id="closeMyDebtsModal" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">Mening qarizlarim</h3>
-      <form id="myDebtForm" class="space-y-3 mb-4">
-        <input id="creditorName" type="text" placeholder="Qariz bergan inson" required class="w-full p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-        <input id="creditorAmount" type="number" min="1" placeholder="Summa" required class="w-full p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-        <input id="creditorNote" type="text" placeholder="Izoh (ixtiyoriy)" class="w-full p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-        <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Qarzdorlik qo'shish</button>
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeMyDebtsModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <h3 class="text-2xl font-bold mb-6 text-center text-blue-700">Mening qarizlarim</h3>
+      <form id="myDebtForm" class="space-y-4 mb-6">
+        <input id="creditorName" type="text" placeholder="Qariz bergan inson" required class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-400">
+        <input id="creditorAmount" type="number" min="1" placeholder="Summa" required class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-400">
+        <input id="creditorNote" type="text" placeholder="Izoh (ixtiyoriy)" class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-400">
+        <button type="submit" class="w-full bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white px-4 py-2 rounded-lg font-semibold shadow transition">Qarzdorlik qo'shish</button>
       </form>
-      <div id="myDebtsList" class="space-y-3"></div>
+      <div id="myDebtsList" class="space-y-4"></div>
     </div>
   </div>
   <!-- Qarzlar ko‘rish modal -->
   <div id="viewDebtsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-6 relative batafsil-modal">
-      <button id="closeViewDebtsModal" class="absolute top-2 right-2 text-2xl text-gray-500 hover:text-red-500">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">Qarzlarni qidirish</h3>
-      <input id="searchByNameOrIdInput" type="text" placeholder="Ism yoki ID bo‘yicha qidiring..." class="w-full p-3 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100 mb-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeViewDebtsModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <h3 class="text-2xl font-bold mb-6 text-center text-purple-700">Qarzlarni qidirish</h3>
+      <input id="searchByNameOrIdInput" type="text" placeholder="Ism yoki ID bo‘yicha qidiring..." class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 mb-4 focus:ring-2 focus:ring-purple-400">
       <!-- Kod orqali qidirish inputidan keyin joylashtiring -->
       <div id="searchedCodesWrap" class="flex flex-wrap mt-2"></div>
       <div id="searchByCodeResult"></div>
     </div>
   </div>
   <script type="module" src="dashboard.js"></script>
+  <script>
+  // Dark mode toggle
+  const toggleBtn = document.getElementById('toggleDark');
+  const html = document.documentElement;
+  toggleBtn.addEventListener('click', () => {
+    html.classList.toggle('dark');
+    // Change icon (optional)
+    const icon = document.getElementById('darkIcon');
+    if (html.classList.contains('dark')) {
+      icon.innerHTML = `<path id="sunIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.07l-.71.71M21 12h-1M4 12H3m16.66 6.66l-.71-.71M4.05 4.93l-.71-.71M12 5a7 7 0 100 14 7 7 0 000-14z" />`;
+    } else {
+      icon.innerHTML = `<path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />`;
+    }
+  });
+</script>
+<style>
+  /* Tailwind dark mode support - improved design */
+  html.dark body {
+    background: linear-gradient(135deg, #181e29 0%, #232c39 100%) !important;
+  }
+  html.dark #sidebar {
+    background: #232c39 !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+    border-right: 1.5px solid #374151 !important;
+  }
+  html.dark .border-b, html.dark .border {
+    border-color: #374151 !important;
+  }
+  html.dark .bg-white,
+  html.dark .bg-gray-200,
+  html.dark .bg-blue-100,
+  html.dark .bg-red-100,
+  html.dark .bg-green-100 {
+    background: rgba(35,44,57,0.95) !important;
+    color: #f3f4f6 !important;
+  }
+  html.dark .rounded-xl,
+  html.dark .rounded-lg,
+  html.dark .rounded-2xl {
+    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.25) !important;
+    border: 1.5px solid #374151 !important;
+  }
+  html.dark .text-gray-900, html.dark .text-gray-700 {
+    color: #fff !important;
+  }
+  html.dark .text-gray-500, html.dark .text-gray-600 {
+    color: #cbd5e1 !important;
+  }
+  html.dark .text-blue-700, html.dark .text-blue-600 {
+    color: #60a5fa !important;
+  }
+  html.dark .text-purple-700 {
+    color: #a78bfa !important;
+  }
+  html.dark .text-red-400 {
+    color: #f87171 !important;
+  }
+  html.dark input, html.dark textarea {
+    background: #232c39 !important;
+    color: #fff !important;
+    border-color: #374151 !important;
+  }
+  html.dark input:focus, html.dark textarea:focus {
+    outline: 2px solid #60a5fa !important;
+    border-color: #60a5fa !important;
+  }
+  html.dark .shadow-lg, html.dark .shadow-2xl {
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+  }
+  html.dark .bg-blue-500 {
+    background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%) !important;
+  }
+  html.dark .bg-red-500 {
+    background: linear-gradient(90deg, #dc2626 0%, #f87171 100%) !important;
+  }
+  html.dark .bg-purple-500 {
+    background: linear-gradient(90deg, #a21caf 0%, #a78bfa 100%) !important;
+  }
+  html.dark .bg-green-500 {
+    background: linear-gradient(90deg, #059669 0%, #6ee7b7 100%) !important;
+  }
+  html.dark .bg-blue-600 { background: #2563eb !important; }
+  html.dark .bg-red-600 { background: #dc2626 !important; }
+  html.dark .bg-purple-600 { background: #a21caf !important; }
+  html.dark .bg-green-600 { background: #059669 !important; }
+  html.dark .text-white { color: #f3f4f6 !important; }
+  html.dark .font-mono { letter-spacing: 1px; }
+  html.dark .loader {
+    background: linear-gradient(0deg,rgba(255,255,255,0.08) 30%,#0000 0 70%,#fff1 0) 50%/8% 100%,
+                linear-gradient(90deg,rgba(255,255,255,0.08) 30%,#0000 0 70%,#fff2 0) 50%/100% 8%;
+  }
+</style>
 </body>
 </html>
