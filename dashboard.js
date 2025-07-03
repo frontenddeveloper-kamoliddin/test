@@ -234,7 +234,7 @@ function renderDebtors(debtors) {
     const totalDebt = totalAdded - totalSub;
     
     const card = document.createElement("div");
-    card.className = "bg-white dark:bg-gray-700 rounded-lg shadow p-4 flex items-center justify-between gap-2 relative z-0"; // z-0 bo‘ldi
+    card.className = "bg-white dark:bg-gray-700 rounded-lg shadow p-4 flex items-center justify-between gap-2 relative z-0";
     card.innerHTML = `
       <div>
         <div class="font-bold text-lg ">${d.name}</div>
@@ -413,8 +413,10 @@ function openDebtorModal(debtor) {
         product,
         note,
         date: Timestamp.now(),
-        authorId: auth.currentUser.uid // <-- Qo‘shildi
+        authorId: auth.currentUser.uid
       }),
+      // Jami qo‘shilganni yangilash
+      totalAdded: (debtor.totalAdded || 0) + amount
     });
     
     const updated = (await getDocs(collection(db, "debtors"))).docs
@@ -446,8 +448,10 @@ function openDebtorModal(debtor) {
         amount: val,
         note,
         date: Timestamp.now(),
-        authorId: auth.currentUser.uid // <-- Qo‘shildi
+        authorId: auth.currentUser.uid
       }),
+      // Jami ayirilganni yangilash
+      totalSubtracted: (debtor.totalSubtracted || 0) + val
     });
     
     const updated = (await getDocs(collection(db, "debtors"))).docs
@@ -669,48 +673,72 @@ searchByNameOrIdInput.addEventListener('input', function () {
 });
 
 // Dashboardda search orqali qo‘shilgan userlarni ko‘rsatish
-function renderAddedSearchUsers() {
-  // Dashboardda alohida cardlar chiqishi uchun
+async function renderAddedSearchUsers() {
   let container = document.getElementById('addedSearchUsersList');
   if (!container) {
     container = document.createElement('div');
     container.id = 'addedSearchUsersList';
     container.className = 'w-full max-w-3xl space-y-4 px-4 mb-6';
-    // Qarzdorlar ro‘yxatidan oldin joylashtiramiz
     const debtorsList = document.getElementById('debtorsList');
     debtorsList.parentNode.insertBefore(container, debtorsList);
   }
-  container.innerHTML = addedSearchUsers.map((user, idx) => `
-    <div class="flex items-center gap-3 bg-purple-100 dark:bg-purple-900 border-2 border-purple-400 rounded-lg p-4 shadow-lg" style="z-index:10; position:relative;">
-      <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xl">
-        ${user.name.slice(0,2).toUpperCase()}
-      </div>
-      <div class="flex-1">
-        <div class="font-bold text-lg flex items-center gap-2">
-          <span>${user.name}</span>
-          <span class="text-blue-600">#${idx + 1}</span>
-        </div>
-        <div class="text-xs text-gray-500">ID: ${user.id}</div>
-      </div>
 
-      <button class="batafsil-search-user-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded mr-2" data-id="${user.id}">Batafsil</button>
-      <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded" data-id="${user.id}">O‘chirish</button>
-    </div>
-  `).join('');
-  // O‘chirish tugmasi
+  // Har bir user uchun jami qo‘shilganni olish va card yasash
+  container.innerHTML = '';
+  for (let idx = 0; idx < addedSearchUsers.length; idx++) {
+    const user = addedSearchUsers[idx];
+    // Qarzdorni topamiz
+    let totalAdded = 0;
+    const debtorsSnap = await getDocs(collection(db, "debtors"));
+    const debtor = debtorsSnap.docs
+      .map(doc => ({ ...doc.data(), id: doc.id }))
+      .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
+
+    if (debtor) {
+      // Avval totalAdded maydonidan, bo‘lmasa history dan hisoblab olamiz
+      if (typeof debtor.totalAdded === "number") {
+        totalAdded = debtor.totalAdded;
+      } else {
+        (debtor.history || []).forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+        });
+      }
+    }
+
+    container.innerHTML += `
+      <div class="flex items-center gap-3 bg-purple-100 dark:bg-purple-900 border-2 border-purple-400 rounded-lg p-4 shadow-lg" style="z-index:10; position:relative;">
+        <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xl">
+          ${user.name.slice(0,2).toUpperCase()}
+        </div>
+        <div class="flex-1">
+          <div class="font-bold text-lg flex items-center gap-2">
+            <span>${user.name}</span>
+            <span class="text-blue-600">#${idx + 1}</span>
+          </div>
+          <div class="text-xs text-gray-500">ID: ${user.id}</div>
+          <div class="mt-1 font-bold text-base text-gray-900 dark:text-gray-100">
+            Jami qo‘shilgan: ${totalAdded} so‘m
+          </div>
+        </div>
+        <button class="batafsil-search-user-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded mr-2" data-id="${user.id}">Batafsil</button>
+        <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded" data-id="${user.id}">O‘chirish</button>
+      </div>
+    `;
+  }
+
+  // O‘chirish va batafsil tugmalari uchun eventlar
   container.querySelectorAll('.remove-search-user-btn').forEach(btn => {
     btn.onclick = function() {
       const userId = this.getAttribute('data-id');
       addedSearchUsers = addedSearchUsers.filter(u => u.id !== userId);
       renderAddedSearchUsers();
-      saveAddedSearchUsers(); // <-- Qo‘shildi
+      saveAddedSearchUsers();
     };
   });
-  // Batafsil tugmasi
   container.querySelectorAll('.batafsil-search-user-btn').forEach(btn => {
     btn.onclick = async function() {
       const userId = this.getAttribute('data-id');
-      const userName = this.getAttribute('data-name') || (addedSearchUsers.find(u => u.id === userId)?.name ?? "Foydalanuvchi");
+      const userName = (addedSearchUsers.find(u => u.id === userId)?.name ?? "Foydalanuvchi");
       const debtorsSnap = await getDocs(collection(db, "debtors"));
       const debtor = debtorsSnap.docs
         .map(doc => ({ ...doc.data(), id: doc.id }))
@@ -719,9 +747,7 @@ function renderAddedSearchUsers() {
       if (debtor) {
         openDebtorModal(debtor);
       } else {
-        // Custom confirm dialog
         if (await showConfirmDiv("qarz qo‘shish uchun yangi qarzdor yaratilsinmi?")) {
-          // Qarzdorlik qo‘shamiz (minimal ma'lumot bilan)
           const user = auth.currentUser;
           if (!user) return;
           const newDebtorRef = await addDoc(collection(db, "debtors"), {
@@ -742,129 +768,7 @@ function renderAddedSearchUsers() {
       }
     };
   });
-  // Qarz qo‘shish tugmasi
-  container.querySelectorAll('.qarz-qoshish-user-btn').forEach(btn => {
-    btn.onclick = function() {
-      const userId = this.getAttribute('data-id');
-      // Modal yaratamiz yoki mavjudini olamiz
-      let modal = document.getElementById('qarzQoshishModal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'qarzQoshishModal';
-        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40';
-        document.body.appendChild(modal);
-      }
-      modal.innerHTML = `
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-xs text-center relative">
-          <button id="closeQarzQoshishModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl">&times;</button>
-          <div id="qarzQoshishStep1">
-            <div class="mb-4 font-bold text-lg">Qarz amali tanlang</div>
-            <button id="showAddInputs" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded mr-2">Qarz qo‘shish</button>
-            <button id="showSubInputs" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Qarz ayirish</button>
-          </div>
-          <form id="qarzAddForm" class="hidden flex flex-col gap-2 mt-4">
-            <input type="text" id="qarzProduct" placeholder="Mahsulot nomi" class="p-2 border rounded" />
-            <input type="number" id="qarzCount" placeholder="Mahsulot soni" class="p-2 border rounded" />
-            <input type="number" id="qarzPrice" placeholder="Mahsulot narxi" class="p-2 border rounded" required />
-            <input type="text" id="qarzNote" placeholder="Izoh (ixtiyoriy)" class="p-2 border rounded" />
-            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Qo‘shish</button>
-          </form>
-          <form id="qarzSubForm" class="hidden flex flex-col gap-2 mt-4">
-            <input type="number" id="qarzSubAmount" placeholder="Qarz ayirish (so‘m)" class="p-2 border rounded" required />
-            <input type="text" id="qarzSubNote" placeholder="Izoh (ixtiyoriy)" class="p-2 border rounded" />
-            <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Ayirish</button>
-          </form>
-        </div>
-      `;
-      modal.classList.remove('hidden');
-
-      // Modalni yopish
-      modal.querySelector('#closeQarzQoshishModal').onclick = () => modal.remove();
-
-      // Qarz qo‘shish inputlarini ko‘rsatish
-      modal.querySelector('#showAddInputs').onclick = () => {
-        modal.querySelector('#qarzAddForm').classList.remove('hidden');
-        modal.querySelector('#qarzSubForm').classList.add('hidden');
-      };
-      // Qarz ayirish inputlarini ko‘rsatish
-      modal.querySelector('#showSubInputs').onclick = () => {
-        modal.querySelector('#qarzSubForm').classList.remove('hidden');
-        modal.querySelector('#qarzAddForm').classList.add('hidden');
-      };
-
-      // Qarz qo‘shish form submit
-      modal.querySelector('#qarzAddForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const product = modal.querySelector('#qarzProduct').value.trim();
-        let count = parseInt(modal.querySelector('#qarzCount').value);
-        let price = parseInt(modal.querySelector('#qarzPrice').value);
-        const note = modal.querySelector('#qarzNote').value.trim();
-        if (!price) return;
-        if (!count || count <= 0) count = 1;
-        const amount = count * price;
-
-        // Qarzdorni topamiz
-        const debtorsSnap = await getDocs(collection(db, "debtors"));
-        const debtor = debtorsSnap.docs
-          .map(doc => ({ ...doc.data(), id: doc.id }))
-          .find(d => d.userId === userId || d.code === userId || d.id === userId);
-
-        if (debtor) {
-          await updateDoc(doc(db, "debtors", debtor.id), {
-            history: arrayUnion({
-              type: "add",
-              amount,
-              count,
-              price,
-              product,
-              note,
-              date: Timestamp.now(),
-              authorId: auth.currentUser.uid // <-- Qo‘shildi
-            }),
-          });
-          // YANGI: yangilangan debtor obyektini olib, modalga uzatamiz
-          const updatedDoc = await getDoc(doc(db, "debtors", debtor.id));
-          const updatedDebtor = { ...updatedDoc.data(), id: debtor.id };
-          modal.remove();
-          openDebtorModal(updatedDebtor);
-          loadDebtors();
-        } else {
-          alert("Bu foydalanuvchiga qarzdorlik topilmadi.");
-        }
-      };
-
-      // Qarz ayirish form submit
-      modal.querySelector('#qarzSubForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const amount = parseInt(modal.querySelector('#qarzSubAmount').value);
-        const note = modal.querySelector('#qarzSubNote').value.trim();
-
-        // Qarzdorni topamiz
-        const debtorsSnap = await getDocs(collection(db, "debtors"));
-        const debtor = debtorsSnap.docs
-          .map(doc => ({ ...doc.data(), id: doc.id }))
-          .find(d => d.userId === userId || d.code === userId || d.id === userId);
-
-        if (debtor) {
-          await updateDoc(doc(db, "debtors", debtor.id), {
-            history: arrayUnion({
-              type: "sub",
-              amount,
-              note,
-              date: Timestamp.now(),
-              authorId: auth.currentUser.uid // <-- Qo‘shildi
-            }),
-          });
-          modal.remove();
-          openDebtorModal(debtor);
-          loadDebtors();
-        } else {
-          alert("Bu foydalanuvchiga qarzdorlik topilmadi.");
-        }
-      };
-    };
-  });
-  saveAddedSearchUsers(); // <-- Qo‘shildi
+  saveAddedSearchUsers();
 }
 
 // Modalni ko‘rsatish uchun yordamchi funksiya
@@ -998,4 +902,12 @@ document.getElementById('myDebtsBtn').onclick = async () => {
 document.getElementById('closeMyDebtsModal').onclick = () => {
   document.getElementById('myDebtsModal').classList.add('hidden');
 };
+
+if (typeof d.totalAdded !== "number") {
+  let totalAdd = 0;
+  (d.history || []).forEach(h => { if (h.type === "add") totalAdd += h.amount || 0; });
+  d.totalAdded = totalAdd;
+  // Istasangiz, Firebase'ga ham yozib qo‘ying:
+  updateDoc(doc(db, "debtors", d.id), { totalAdded: totalAdd });
+}
 
