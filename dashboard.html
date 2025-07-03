@@ -16,8 +16,12 @@
       max-height: 70vh;   
       overflow-y: auto;   
       padding: 16px;     
+      background: #f5f6fa !important; /* juda och kulrang */
     }
-    .loader {
+    html.dark .batafsil-modal {
+  background: #232c39 !important;
+}
+.loader {
   width: 50px;
   aspect-ratio: 1;
   display: grid;
@@ -249,6 +253,11 @@
     background: linear-gradient(0deg,rgba(255,255,255,0.08) 30%,#0000 0 70%,#fff1 0) 50%/8% 100%,
                 linear-gradient(90deg,rgba(255,255,255,0.08) 30%,#0000 0 70%,#fff2 0) 50%/100% 8%;
   }
+  html.dark #noDebtorsFound {
+  background: rgba(35,44,57,0.98) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+}
 </style>
 </body>
 </html>

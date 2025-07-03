@@ -281,40 +281,42 @@ function renderDebtors(debtors) {
     card.className = `
       rounded-2xl p-6 shadow-2xl border
       ${isDark ? 'border-[#374151] bg-[#232c39]/90' : 'border-white/40 bg-white/60'}
-      backdrop-blur-2xl flex items-center justify-between gap-6 relative z-0
+      backdrop-blur-2xl flex flex-col justify-between gap-6 relative z-0
       transition hover:scale-[1.025] hover:shadow-2xl mb-4
       text-gray-500
     `.replace(/\s+/g, ' ');
 
     card.innerHTML = `
-      <div>
-        <div class="font-bold text-2xl mb-1 flex items-center gap-2">
-          <span class="${isDark ? 'text-white' : 'text-gray-900'}">${d.name}</span>
-          <span class="${isDark ? 'text-blue-300' : 'text-blue-500'} text-base font-bold">#${d.code || d.id || ""}</span>
+  <div class="flex flex-col gap-2">
+    <div>
+      <div class="font-bold text-2xl mb-1 flex items-center gap-2">
+        <span class="${isDark ? 'text-white' : 'text-gray-900'}">${d.name}</span>
+        <span class="${isDark ? 'text-blue-300' : 'text-blue-500'} text-base font-bold">#${d.code || d.id || ""}</span>
+      </div>
+      <div class="text-xs ${isDark ? 'text-gray-400' : 'text-blue-600'} mb-2 font-mono">Kod: <span>${d.code || ''}</span></div>
+      <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-2">${d.note || ""}</div>
+      ${d.moveComment ? `<div class="text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} mt-1">Izoh: ${d.moveComment}</div>` : ""}
+      <div class="mt-2 text-base leading-7 space-y-1">
+        <div>
+          <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Umumiy qo‘shilgan:</span>
+          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd} so‘m</span>
         </div>
-        <div class="text-xs ${isDark ? 'text-gray-400' : 'text-blue-600'} mb-2 font-mono">Kod: <span>${d.code || ''}</span></div>
-        <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-2">${d.note || ""}</div>
-        ${d.moveComment ? `<div class="text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} mt-1">Izoh: ${d.moveComment}</div>` : ""}
-        <div class="mt-2 text-base leading-7 space-y-1">
-          <div>
-            <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Umumiy qo‘shilgan:</span>
-            <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd} so‘m</span>
-          </div>
-          <div>
-            <span class="font-semibold ${isDark ? 'text-gray-2300' : 'text-gray-700'}">Ayirilgan:</span>
-            <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalSub} so‘m</span>
-          </div>
-          <div>
-            <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Qolgan:</span>
-            <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd - totalSub} so‘m</span>
-          </div>
+        <div>
+          <span class="font-semibold ${isDark ? 'text-gray-2300' : 'text-gray-700'}">Ayirilgan:</span>
+          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalSub} so‘m</span>
+        </div>
+        <div>
+          <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Qolgan:</span>
+          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd - totalSub} so‘m</span>
         </div>
       </div>
-      <div class="flex flex-col gap-3 min-w-[120px] items-end">
-        <button class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition" data-id="${d.id}">Batafsil</button>
-        <button class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition" data-del="${d.id}">O‘chirish</button>
-      </div>
-    `;
+    </div>
+    <div class="flex flex-col gap-2 w-full mt-4 items-stretch">
+      <button class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-id="${d.id}">Batafsil</button>
+      <button class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-del="${d.id}">O‘chirish</button>
+    </div>
+  </div>
+`;
 
     card.querySelector("[data-id]").onclick = () => openDebtorModal(d);
     card.querySelector("[data-del]").onclick = () => confirmDeleteDebtor(d.id, d.name);
@@ -325,7 +327,7 @@ function renderDebtors(debtors) {
 // Confirm debtor deletion
 function confirmDeleteDebtor(id, name) {
   const div = document.createElement("div");
-  div.className = "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50";
+  div.className = 'modal-backdrop fixed inset-0 z-[100] flex items-center justify-center';
   div.innerHTML = `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-xs text-center">
       <div class="mb-4 font-bold">"${name}"ni o‘chirishni istaysizmi?</div>
@@ -389,49 +391,67 @@ function openDebtorModal(debtor) {
   });
   
   modalContent.innerHTML = `
-  <div class="flex flex-col md:flex-row gap-4 mb-4">
-    <div class="flex-1">
-      <div class="font-bold text-xl mb-2">${debtor.name}</div>
-      <div class="text-gray-500 dark:text-gray-300 mb-2">${debtor.product} (${debtor.count} x ${debtor.price} so‘m)</div>
+  <div class="flex flex-col md:flex-row gap-6 mb-4">
+    <div class="flex-1 bg-gray-50 dark:bg-gray-800 rounded-xl p-5 shadow border border-gray-200 dark:border-gray-700">
+      <div class="font-bold text-2xl mb-1 flex items-center gap-2 text-gray-900 dark:text-white">
+        ${debtor.name}
+      </div>
+      <div class="text-sm text-gray-400 mb-2">${debtor.product ? `${debtor.product} (${debtor.count || 1} x ${debtor.price || 0} so‘m)` : ""}</div>
       <div class="text-xs text-gray-400 mb-2">${debtor.note || ""}</div>
-      <div class="mb-2">Umumiy qarz: <span class="font-bold">${totalAdd - totalSub} so‘m</span></div>
-      
-      <form id="addDebtForm" class="flex flex-col gap-2 mb-2">
+      <div class="mb-4 text-base">
+        Umumiy qarz: <span class="font-bold text-blue-700 dark:text-blue-300">${totalAdd - totalSub} so‘m</span>
+      </div>
+      <form id="addDebtForm" class="flex flex-col gap-2 mb-3">
         <div class="grid grid-cols-1 gap-2">
-          <input type="text" placeholder="Mahsulot nomi" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
-          <input type="number" minlength="" placeholder="Mahsulot soni" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
-          <input type="number" min="1" placeholder="Mahsulot narxi" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100" required>
-          <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100">
+          <input type="text" placeholder="Mahsulot nomi" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
+          <input type="number" placeholder="Mahsulot soni" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
+          <input type="number" min="1" placeholder="Mahsulot narxi" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" required autocomplete="off">
+          <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
         </div>
-        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded">Qo‘shish</button>
+        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-semibold shadow transition">Qo‘shish</button>
       </form>
-      
-      <form id="subDebtForm" class="flex flex-col gap-2 mb-2">
-        <input type="number" min="1" placeholder="Qarz ayirish (so‘m)" 
-          class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100" required>
-        <input type="text" placeholder="Izoh (ixtiyoriy)" 
-          class="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100">
-        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded">Ayirish</button>
+      <form id="subDebtForm" class="flex flex-col gap-2 mb-3">
+        <input type="number" min="1" placeholder="Qarz ayirish (so‘m)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100 transition" required autocomplete="off">
+        <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
+        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded font-semibold shadow transition">Ayirish</button>
       </form>
       ${
         (totalAdd - totalSub) > 0
-          ? `<button id="finishDebtBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded mt-2 w-full">Qarz tugatish</button>`
+          ? `<button id="finishDebtBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded mt-2 w-full font-semibold shadow transition">Qarz tugatish</button>`
           : ""
       }
     </div>
-    
-    <div class="flex-1">
-      <div class="font-bold mb-2">Qo‘shilganlar</div>
-      ${addHistory || '<div class="text-gray-400">Yo‘q</div>'}
-      <div class="font-bold mb-2 mt-4">Ayirilganlar</div>
-      ${subHistory || '<div class="text-gray-400">Yo‘q</div>'}
+    <div class="flex-1 flex flex-col gap-4">
+      <div>
+        <div class="font-bold mb-2 text-gray-900 dark:text-white">Qo‘shilganlar</div>
+        <div class="space-y-2">
+          ${addHistory || '<div class="text-gray-400">Yo‘q</div>'}
+        </div>
+      </div>
+      <div>
+        <div class="font-bold mb-2 mt-2 text-gray-900 dark:text-white">Ayirilganlar</div>
+        <div class="space-y-2">
+          ${subHistory || '<div class="text-gray-400">Yo‘q</div>'}
+        </div>
+      </div>
     </div>
   </div>
-  
-  <div class="mt-4 flex flex-col md:flex-row justify-between font-bold gap-2">
-    <span>Jami qo‘shilgan: ${totalAdd} so‘m</span>
-    <span>Jami ayirilgan: ${totalSub} so‘m</span>
-    <span>Qarzdorlik: ${totalAdd - totalSub} so‘m</span>
+  <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="bg-white/80 dark:bg-gray-900/60 rounded-lg p-4 flex flex-col items-center border border-gray-200 dark:border-gray-700 shadow">
+      <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Jami qo‘shilgan</div>
+      <div class="text-2xl font-bold text-green-600 dark:text-green-400">${totalAdd}</div>
+      <div class="text-green-600 dark:text-green-400 font-semibold">so‘m</div>
+    </div>
+    <div class="bg-white/80 dark:bg-gray-900/60 rounded-lg p-4 flex flex-col items-center border border-gray-200 dark:border-gray-700 shadow">
+      <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Jami ayirilgan</div>
+      <div class="text-2xl font-bold text-red-500 dark:text-red-400">${totalSub}</div>
+      <div class="text-red-500 dark:text-red-400 font-semibold">so‘m</div>
+    </div>
+    <div class="bg-white/80 dark:bg-gray-900/60 rounded-lg p-4 flex flex-col items-center border border-gray-200 dark:border-gray-700 shadow">
+      <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Qarzdorlik</div>
+      <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalAdd - totalSub}</div>
+      <div class="text-blue-600 dark:text-blue-400 font-semibold">so‘m</div>
+    </div>
   </div>
 `;
 
@@ -619,7 +639,7 @@ function showConfirmDiv(message) {
 
     const div = document.createElement('div');
     div.id = 'customConfirmDiv';
-    div.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40';
+    div.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-gray-800 bg-opacity-60';
     div.innerHTML = `
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-xs text-center border border-gray-300 dark:border-gray-700">
         <div class="mb-4 font-bold text-lg">${message}</div>
@@ -707,12 +727,12 @@ searchByNameOrIdInput.addEventListener('input', function () {
     searchByCodeResult.innerHTML = results
       .map(
         user => `
-        <div class="flex items-center gap-3 bg-gray-100 dark:bg-gray-700 rounded p-3 mb-2 shadow">
+        <div class="flex items-center gap-3 bg-gray-100  rounded p-3 mb-2 shadow">
           <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
             ${user.name.slice(0,2).toUpperCase()}
           </div>
           <div class="flex-1">
-            <div class="font-bold">${user.name} <span class="text-blue-400">#${user.id.slice(-2)}</span></div>
+            <div class="font-bold text-blue-400">${user.name} <span class="text-blue-400">#${user.id.slice(-2)}</span></div>
             <div class="text-xs text-gray-500">ID: ${user.id}</div>
           </div>
           <button class="add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded" data-id="${user.id}">Qo‘shish</button>
@@ -736,6 +756,14 @@ searchByNameOrIdInput.addEventListener('input', function () {
 
 // Dashboardda search orqali qo‘shilgan userlarni ko‘rsatish
 async function renderAddedSearchUsers() {
+  // Loader va "Qarzdorlar topilmadi" divlarini olish
+  const loader = document.querySelector('.loader');
+  const noDebtorsDiv = document.getElementById("noDebtorsFound");
+  if (addedSearchUsers.length > 0) {
+    if (noDebtorsDiv) noDebtorsDiv.classList.add("hidden");
+    if (loader) loader.classList.add("hidden");
+  }
+
   let container = document.getElementById('addedSearchUsersList');
   if (!container) {
     container = document.createElement('div');
@@ -776,28 +804,30 @@ async function renderAddedSearchUsers() {
     const remaining = totalAdded - totalSub;
 
     container.innerHTML += `
-      <div class="flex items-center gap-3 rounded-xl p-4 shadow-lg border border-white/30 bg-white/30 backdrop-blur-xl" style="z-index:10; position:relative;">
-        <div class="w-12 h-12 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-xl shadow">
+      <div class="flex flex-col sm:flex-row items-center gap-4 rounded-2xl p-5 shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80 backdrop-blur-xl" style="z-index:10; position:relative;">
+        <div class="w-14 h-14 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-200 font-bold text-2xl shadow mb-2 sm:mb-0">
           ${user.name.slice(0,2).toUpperCase()}
         </div>
-        <div class="flex-1">
-          <div class="font-bold text-lg flex items-center gap-2 text-gray-900 drop-shadow">
-            <span>${user.name}</span>
-            <span class="text-gray-500">#${user.id}</span>
+        <div class="flex-1 min-w-0 w-full">
+          <div class="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white mb-1">
+            <span class="truncate">${user.name}</span>
+            <span class="text-gray-400 font-mono text-base">#${user.id}</span>
           </div>
-          <div class="text-xs text-gray-500">ID: ${user.id}</div>
-          <div class="mt-1 font-bold text-base text-gray-900">
-            Jami qo‘shilgan: ${totalAdded} so‘m
+          <div class="text-xs text-gray-500 dark:text-gray-400 font-mono mb-1">ID: ${user.id}</div>
+          <div class="mt-1 font-semibold text-base text-gray-700 dark:text-gray-200">
+            Jami qo‘shilgan: <span class="text-green-600 dark:text-green-400 font-bold">${totalAdded} so‘m</span>
           </div>
-          <div class="mt-1 font-bold text-base text-red-700">
-            Jami ayirilgan: ${totalSub} so‘m
+          <div class="mt-1 font-semibold text-base">
+            <span class="text-red-600 dark:text-red-400">Jami ayirilgan: ${totalSub} so‘m</span>
           </div>
-          <div class="mt-1 font-bold text-base text-blue-700">
-            Qolgan qarzdorlik: ${remaining} so‘m
+          <div class="mt-1 font-semibold text-base">
+            Qolgan qarzdorlik: <span class="text-blue-700 dark:text-blue-400 font-bold">${remaining} so‘m</span>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-2 mt-4 w-full">
+            <button class="batafsil-search-user-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">Batafsil</button>
+            <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">O‘chirish</button>
           </div>
         </div>
-        <button class="batafsil-search-user-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded mr-2 shadow" data-id="${user.id}">Batafsil</button>
-        <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded shadow" data-id="${user.id}">O‘chirish</button>
       </div>
     `;
   }
