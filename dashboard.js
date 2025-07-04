@@ -551,9 +551,11 @@ function openDebtorModal(debtor) {
       finishBtn.onclick = async () => {
         if (!(await showConfirmDiv("Qarz tugatilsinmi?"))) return;
         const ref = doc(db, "debtors", debtor.id);
-        // Barcha tarixni tozalaymiz
+        // Barcha tarixni tozalaymiz va jami qo‘shilgan/ayirilganni ham 0 qilamiz
         await updateDoc(ref, {
           history: [],
+          totalAdded: 0,
+          totalSubtracted: 0
         });
         const updated = (await getDocs(collection(db, "debtors"))).docs
           .find((docu) => docu.id === debtor.id)
