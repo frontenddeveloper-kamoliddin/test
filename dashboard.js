@@ -292,6 +292,15 @@ function renderDebtors(debtors) {
       <div class="font-bold text-2xl mb-1 flex items-center gap-2">
         <span class="${isDark ? 'text-white' : 'text-gray-900'}">${d.name}</span>
         <span class="${isDark ? 'text-blue-300' : 'text-blue-500'} text-base font-bold">#${d.code || d.id || ""}</span>
+        ${d.lastRating ? `
+          <span class="ml-2 px-4 py-1 rounded-full font-bold text-sm flex items-center gap-2 shadow rating-badge"
+            style="background: linear-gradient(90deg,#fbbf24,#f59e42); color: #fff; border: 1.5px solid #f59e42; min-width:48px; justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="#fff" style="filter: drop-shadow(0 1px 2px #f59e42);">
+              <polygon points="10,2 12.5,7.5 18,8 13.5,12 15,18 10,14.5 5,18 6.5,12 2,8 7.5,7.5" stroke="#fff" stroke-width="0.5"/>
+            </svg>
+            ${Number(d.lastRating).toFixed(1).replace(/\.0$/, "")}
+          </span>
+        ` : ""}
       </div>
       <div class="text-xs ${isDark ? 'text-gray-400' : 'text-blue-600'} mb-2 font-mono">Kod: <span>${d.code || ''}</span></div>
       <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-2">${d.note || ""}</div>
@@ -550,18 +559,28 @@ function openDebtorModal(debtor) {
     if (finishBtn) {
       finishBtn.onclick = async () => {
         if (!(await showConfirmDiv("Qarz tugatilsinmi?"))) return;
-        const ref = doc(db, "debtors", debtor.id);
-        // Barcha tarixni tozalaymiz va jami qo‘shilgan/ayirilganni ham 0 qilamiz
-        await updateDoc(ref, {
-          history: [],
-          totalAdded: 0,
-          totalSubtracted: 0
+        showRatingCard(async (rating) => {
+          const ref = doc(db, "debtors", debtor.id);
+          // Oldingi ballni olamiz
+          let prevRating = 0;
+          const docSnap = await getDoc(ref);
+          if (docSnap.exists() && typeof docSnap.data().lastRating === "number") {
+            prevRating = docSnap.data().lastRating;
+          }
+          // O‘rtacha ballni hisoblaymiz
+          let avgRating = prevRating ? Math.round(((prevRating + rating) / 2) * 10) / 10 : rating;
+          await updateDoc(ref, {
+            history: [],
+            totalAdded: 0,
+            totalSubtracted: 0,
+            lastRating: avgRating // O‘rtacha ballni saqlash
+          });
+          const updated = (await getDocs(collection(db, "debtors"))).docs
+            .find((docu) => docu.id === debtor.id)
+            .data();
+          openDebtorModal({ ...updated, id: debtor.id });
+          loadDebtors();
         });
-        const updated = (await getDocs(collection(db, "debtors"))).docs
-          .find((docu) => docu.id === debtor.id)
-          .data();
-        openDebtorModal({ ...updated, id: debtor.id });
-        loadDebtors();
       };
     }
   }
@@ -712,7 +731,7 @@ closeViewDebtsModal.addEventListener('click', () => {
 let addedSearchUsers = [];
 
 // Qidiruv funksiyasi (yangilangan)
-searchByNameOrIdInput.addEventListener('input', function () {
+searchByNameOrIdInput.addEventListener('input', async function () {
   const query = this.value.trim().toLowerCase();
   if (!query) {
     searchByCodeResult.innerHTML = '';
@@ -723,24 +742,48 @@ searchByNameOrIdInput.addEventListener('input', function () {
       user.name.toLowerCase().includes(query) ||
       user.id.toLowerCase().includes(query)
   );
+
+  // Qarzdorlarni olish (ball uchun)
+  const debtorsSnap = await getDocs(collection(db, "debtors"));
+  const debtorsArr = debtorsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
   if (results.length === 0) {
     searchByCodeResult.innerHTML = '<div class="text-center text-gray-400 mt-4">Hech narsa topilmadi</div>';
   } else {
     searchByCodeResult.innerHTML = results
-      .map(
-        user => `
-        <div class="flex items-center gap-3 bg-gray-100  rounded p-3 mb-2 shadow">
-          <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
+      .map(user => {
+        // Qarzdorni topamiz
+        const debtor = debtorsArr.find(
+          d => d.userId === user.id || d.code === user.id || d.id === user.id
+        );
+        // Ball badge HTML
+        const ratingBadge = debtor && debtor.lastRating ? `
+          <span class="ml-2 px-3 py-1 rounded-full font-bold text-sm flex items-center gap-1 shadow rating-badge"
+            style="background: linear-gradient(90deg,#fbbf24,#f59e42); color: #fff; border: 1.5px solid #f59e42;">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="#fff" style="filter: drop-shadow(0 1px 2px #f59e42);">
+              <polygon points="10,2 12.5,7.5 18,8 13.5,12 15,18 10,14.5 5,18 6.5,12 2,8 7.5,7.5" stroke="#fff" stroke-width="0.5"/>
+            </svg>
+            ${Number(debtor.lastRating).toFixed(1).replace(/\.0$/, "")}
+          </span>
+        ` : "";
+
+        return `
+        <div class="flex items-center gap-3 bg-[#232c39] rounded p-3 mb-2 shadow border border-gray-700">
+          <div class="w-12 h-12 rounded-full bg-[#1976b2] flex items-center justify-center text-white font-bold text-lg border-4 border-[#60a5fa]">
             ${user.name.slice(0,2).toUpperCase()}
           </div>
-          <div class="flex-1">
-            <div class="font-bold text-blue-400">${user.name} <span class="text-blue-400">#${user.id.slice(-2)}</span></div>
-            <div class="text-xs text-gray-500">ID: ${user.id}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white mb-1">
+              <span class="truncate">${user.name}</span>
+              <span class="text-blue-300 font-mono text-base">#${user.number || user.id.slice(-3)}</span>
+              ${ratingBadge}
+            </div>
+            <div class="text-xs text-gray-400 font-mono">ID: ${user.id}</div>
           </div>
-          <button class="add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded" data-id="${user.id}">Qo‘shish</button>
+          <button class="add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow text-sm" data-id="${user.id}">Qo‘shish</button>
         </div>
-      `
-      )
+        `;
+      })
       .join('');
     // Qo‘shish tugmalariga event biriktirish
     document.querySelectorAll('.add-search-user-btn').forEach(btn => {
@@ -750,6 +793,7 @@ searchByNameOrIdInput.addEventListener('input', function () {
         if (user && !addedSearchUsers.some(u => u.id === user.id)) {
           addedSearchUsers.push(user);
           renderAddedSearchUsers();
+          saveAddedSearchUsers();
         }
       };
     });
@@ -814,6 +858,15 @@ async function renderAddedSearchUsers() {
           <div class="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white mb-1">
             <span class="truncate">${user.name}</span>
             <span class="text-gray-400 font-mono text-base">#${user.id}</span>
+            ${debtor && debtor.lastRating ? `
+              <span class="ml-2 px-4 py-1 rounded-full font-bold text-sm flex items-center gap-2 shadow rating-badge"
+                style="background: linear-gradient(90deg,#fbbf24,#f59e42); color: #fff; border: 1.5px solid #f59e42; min-width:48px; justify-content:center;">
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="#fff" style="filter: drop-shadow(0 1px 2px #f59e42);">
+                  <polygon points="10,2 12.5,7.5 18,8 13.5,12 15,18 10,14.5 5,18 6.5,12 2,8 7.5,7.5" stroke="#fff" stroke-width="0.5"/>
+                </svg>
+                ${debtor.lastRating}
+              </span>
+            ` : ""}
           </div>
           <div class="text-xs text-gray-500 dark:text-gray-400 font-mono mb-1">ID: ${user.id}</div>
           <div class="mt-1 font-semibold text-base text-gray-700 dark:text-gray-200">
@@ -1017,6 +1070,34 @@ if (typeof d.totalAdded !== "number") {
   d.totalAdded = totalAdd;
   // Istasangiz, Firebase'ga ham yozib qo‘ying:
   updateDoc(doc(db, "debtors", d.id), { totalAdded: totalAdd });
+}
+
+// Ball berish cardi funksiyasi
+function showRatingCard(onRated) {
+  // Eski card bo‘lsa o‘chiramiz
+  document.getElementById('ratingCardDiv')?.remove();
+  const div = document.createElement('div');
+  div.id = 'ratingCardDiv';
+  div.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-40';
+  div.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-xs text-center border border-gray-300 dark:border-gray-700">
+      <div class="mb-4 font-bold text-lg">Qarz tugatildi! Qarzdorga baho bering:</div>
+      <div class="flex justify-center gap-2 mb-4">
+        ${[1,2,3,4,5].map(i => `
+          <button class="rating-btn bg-gray-200 hover:bg-yellow-400 text-xl rounded-full w-10 h-10 font-bold" data-rating="${i}">${i}</button>
+        `).join('')}
+      </div>
+      <div class="text-xs text-gray-500">Ball berilgandan so‘ng bu oynacha yopiladi.</div>
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.onclick = () => {
+      const rating = parseInt(btn.getAttribute('data-rating'));
+      div.remove();
+      if (typeof onRated === "function") onRated(rating);
+    };
+  });
 }
 
 
