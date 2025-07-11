@@ -243,7 +243,7 @@
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
       signInWithEmailAndPassword(auth, email, password)
-        .then(() => window.location.href = "dashboard.html")
+        .then(() => window.location.href = "bosh-sahifa.html")
         .catch(err => loginError.innerText = err.message);
     };
 
@@ -268,7 +268,7 @@
           // Ismni Firebase profiliga yozish
           return updateProfile(userCredential.user, { displayName: name });
         })
-        .then(() => window.location.href = "dashboard.html")
+        .then(() => window.location.href = "bosh-sahifa.html")
         .catch(err => registerError.innerText = err.message);
     };
 

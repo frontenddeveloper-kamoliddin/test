@@ -3,24 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard</title>
+  <title>bosh-sahifa</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="shortcut icon" href="./duloloq.png" type="image/x-icon">
   <style>
-    .batafsil-qarzdorliklar {
-      max-height: 400px; 
-      overflow-y: auto; 
-    }
-   
-    .batafsil-modal {
-      max-height: 70vh;   
-      overflow-y: auto;   
-      padding: 16px;     
-      background: #f5f6fa !important; /* juda och kulrang */
-    }
-    html.dark .batafsil-modal {
-  background: #232c39 !important;
-}
+    
 .loader {
   width: 50px;
   aspect-ratio: 1;
@@ -79,88 +66,10 @@
 
     <div class="w-full max-w-3xl flex items-center justify-between mb-6 px-4">
       <button id="openSidebar" class="text-2xl text-gray-700">&#9776;</button>
-      <h2 class="text-2xl text-[white] font-bold text-center flex-1">Qarzdorlar Dashboard</h2>
+      <h2 class="text-2xl text-[bg-gray-200] font-bold text-center flex-1">Qarzdorlar Dashboard</h2>
     </div>
 
-    <div class="w-full max-w-3xl mb-4 px-4">
-      <input id="searchInput" type="text" placeholder="Qarzdorni qidiring..." class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-      <!-- Barcha qarzlarni qidirish inputi -->
-      <input id="searchAllDebtsInput" type="text" placeholder="Profilega yozilgan Qarzdorlarni ko‘rish" class="w-full mt-2 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-      <div id="searchAllDebtsResult" class="mt-2"></div>
-    </div>
-
-    <form id="debtorForm" class="w-full max-w-3xl bg-gray-200 rounded-lg shadow-lg p-4 mb-6 space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input id="debtorName" type="text" placeholder="Ism" required class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-        <input id="debtorProduct" type="text" placeholder="Mahsulot nomi"  class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-        <input id="debtorCount" type="number" minlength=""  placeholder="Mahsulot soni"  class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-        <input id="debtorPrice" type="number" min="1" placeholder="Mahsulot narxi" required class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-      </div>
-      
-      <input id="debtorNote" type="text" placeholder="Qo'shimcha izoh (ixtiyoriy)" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
-      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Qarzdor qo'shish</button>
-    </form>
-
-    <div class="w-full max-w-3xl flex flex-col md:flex-row gap-4 mb-4 px-4">
-      <div class="flex-1 bg-blue-100 rounded-lg p-4 text-center">
-        <div class="text-lg font-bold">Umumiy qo‘shilgan</div>
-        <div id="totalAdded" class="text-2xl font-bold mt-2">0 so‘m</div>
-      </div>
-      <div class="flex-1 bg-red-100 rounded-lg p-4 text-center">
-        <div class="text-lg font-bold">Umumiy ayirilgan</div>
-        <div id="totalSubtracted" class="text-2xl font-bold mt-2">0 so‘m</div>
-      </div>
-      <div class="flex-1 bg-green-100 rounded-lg p-4 text-center">
-        <div class="text-lg font-bold">Umumiy qarzdorlik</div>
-        <div id="totalDebt" class="text-2xl font-bold mt-2">0 so‘m</div>
-      </div>
-    </div>
-     <div class="loader z-[1] absolute left-1/2 top-[580px]"></div>
-
-    <!-- Loader ustida chiqadigan "Qarzdorlar topilmadi" -->
-    <div
-      id="noDebtorsFound"
-      class="hidden absolute left-1/2 top-[580px] -translate-x-1/2 z-[10] bg-white/90 text-gray-700 rounded-xl text-2xl font-bold shadow-lg border border-gray-300 flex items-center justify-center"
-      style="height: 100px; width: 420px; letter-spacing: 1px;"
-    >
-      <svg class="w-8 h-8 mr-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-        <path stroke="currentColor" stroke-width="2" d="M8 12h8M12 8v8"/>
-      </svg>
-      Qarzdorlar topilmadi
-    </div>
-
-    <div id="debtorsList" class="w-full max-w-3xl space-y-6 px-4 mb-10"></div>
-    <div class="batafsil-qarzdorliklar"></div>
-  </div>
- 
-  <div id="debtorModal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative batafsil-modal border border-gray-200">
-      <button id="closeModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
-      <div id="modalContent"></div>
-    </div>
-  </div>
-  <div id="myDebtsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative batafsil-modal border border-gray-200">
-      <button id="closeMyDebtsModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
-      <h3 class="text-2xl font-bold mb-6 text-center text-blue-700">Mening qarizlarim</h3>
-      
-      <div id="myDebtsList" class="space-y-4"></div>
-    </div>
-  </div>
-  <!-- Qarzlar ko'rish modal -->
-  <div id="viewDebtsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative batafsil-modal border border-gray-200">
-      <button id="closeViewDebtsModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
-      <h3 class="text-2xl font-bold mb-6 text-center text-purple-700">Qarzlarni qidirish</h3>
-      <input id="searchByNameOrIdInput" type="text" placeholder="Ism yoki ID bo'yicha qidiring..." class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 mb-4 focus:ring-2 focus:ring-purple-400">
-      <!-- Kod orqali qidirish inputidan keyin joylashtiring -->
-      <div id="searchedCodesWrap" class="flex flex-wrap mt-2"></div>
-      <div id="searchByCodeResult"></div>
-      <!-- Barcha qarzlarni qidirish natijalari -->
-      <div id="searchAllDebtsResult" class="mt-4"></div>
-    </div>
-  </div>
+    
   <script type="module" src="dashboard.js"></script>
   <script>
   // Dark mode toggle

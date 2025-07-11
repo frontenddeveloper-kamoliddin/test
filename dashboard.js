@@ -713,12 +713,16 @@ const viewDebtsModal = document.getElementById('viewDebtsModal');
 const closeViewDebtsModal = document.getElementById('closeViewDebtsModal');
 const searchByNameOrIdInput = document.getElementById('searchByNameOrIdInput');
 const searchByCodeResult = document.getElementById('searchByCodeResult');
+const searchAllDebtsInput = document.getElementById('searchAllDebtsInput');
+const searchAllDebtsResult = document.getElementById('searchAllDebtsResult');
 
 // Modalni ochish
 viewDebtsBtn.addEventListener('click', () => {
   viewDebtsModal.classList.remove('hidden');
   searchByNameOrIdInput.value = '';
   searchByCodeResult.innerHTML = '';
+  searchAllDebtsInput.value = '';
+  searchAllDebtsResult.innerHTML = '';
   searchByNameOrIdInput.focus();
 });
 
@@ -727,10 +731,187 @@ closeViewDebtsModal.addEventListener('click', () => {
   viewDebtsModal.classList.add('hidden');
 });
 
-// Dashboardga qo‘shilgan userlar (search orqali)
+// Dashboardga qo'shilgan userlar (search orqali)
 let addedSearchUsers = [];
 
-// Qidiruv funksiyasi (yangilangan)
+// Barcha qarzlarni qidirish funksiyasi (asosiy sahifa uchun)
+document.getElementById('searchAllDebtsInput').addEventListener('input', async function() {
+  const query = this.value.trim().toLowerCase();
+  const searchAllDebtsResult = document.getElementById('searchAllDebtsResult');
+  if (!query) {
+    searchAllDebtsResult.innerHTML = '';
+    return;
+  }
+
+  // Barcha qarzdorlarni olish
+  const debtorsSnap = await getDocs(collection(db, "debtors"));
+  const allDebtors = debtorsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+  // Foydalanuvchining o'z qarzdorlari va qo'shilgan userlar (addedSearchUsers) bo'yicha qidirish
+  const user = auth.currentUser;
+  const myUserId = user ? user.uid : null;
+  const addedUserIds = (addedSearchUsers || []).map(user => user.id);
+
+  // Faqat o'z qarzdorlaringiz va qo'shilgan userlar qarzdorliklarini filtrlash
+  const filteredDebtors = allDebtors.filter(debtor =>
+    (myUserId && debtor.userId === myUserId) ||
+    addedUserIds.includes(debtor.userId) ||
+    addedUserIds.includes(debtor.code) ||
+    addedUserIds.includes(debtor.id)
+  );
+
+  // Qidiruv natijalarini to'plash
+  const searchResults = [];
+
+  filteredDebtors.forEach(debtor => {
+    // Qarzdor nomi bo'yicha qidirish
+    if (debtor.name && debtor.name.toLowerCase().includes(query)) {
+      searchResults.push({
+        type: 'debtor_name',
+        debtor: debtor,
+        match: debtor.name,
+        matchType: 'Qarzdor nomi'
+      });
+    }
+    // Mahsulot nomi bo'yicha qidirish
+    if (debtor.product && debtor.product.toLowerCase().includes(query)) {
+      searchResults.push({
+        type: 'product',
+        debtor: debtor,
+        match: debtor.product,
+        matchType: 'Mahsulot'
+      });
+    }
+    // Izoh bo'yicha qidirish
+    if (debtor.note && debtor.note.toLowerCase().includes(query)) {
+      searchResults.push({
+        type: 'note',
+        debtor: debtor,
+        match: debtor.note,
+        matchType: 'Izoh'
+      });
+    }
+    // History ichidan qidirish
+    if (debtor.history && Array.isArray(debtor.history)) {
+      debtor.history.forEach((h, index) => {
+        // History izohi bo'yicha
+        if (h.note && h.note.toLowerCase().includes(query)) {
+          searchResults.push({
+            type: 'history_note',
+            debtor: debtor,
+            match: h.note,
+            matchType: 'Tarix izohi',
+            historyItem: h,
+            historyIndex: index
+          });
+        }
+        // History mahsuloti bo'yicha
+        if (h.product && h.product.toLowerCase().includes(query)) {
+          searchResults.push({
+            type: 'history_product',
+            debtor: debtor,
+            match: h.product,
+            matchType: 'Tarix mahsuloti',
+            historyItem: h,
+            historyIndex: index
+          });
+        }
+        // Summa bo'yicha qidirish
+        if (h.amount && h.amount.toString().includes(query)) {
+          searchResults.push({
+            type: 'amount',
+            debtor: debtor,
+            match: h.amount.toString(),
+            matchType: 'Summa',
+            historyItem: h,
+            historyIndex: index
+          });
+        }
+      });
+    }
+  });
+
+  // Natijalarni ko'rsatish
+  if (searchResults.length === 0) {
+    searchAllDebtsResult.innerHTML = '<div class="text-center text-gray-400 mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">Hech qanday qarz topilmadi</div>';
+  } else {
+    // Duplikatlarni olib tashlash (bir xil debtor uchun bir necha natija bo'lishi mumkin)
+    const uniqueResults = [];
+    const seen = new Set();
+    searchResults.forEach(result => {
+      const key = `${result.debtor.id}-${result.type}-${result.historyIndex || 0}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueResults.push(result);
+      }
+    });
+    searchAllDebtsResult.innerHTML = uniqueResults.map(result => {
+      const debtor = result.debtor;
+      // Jami qarzdorlikni hisoblash
+      let totalAdded = 0, totalSub = 0;
+      if (typeof debtor.totalAdded === "number") {
+        totalAdded = debtor.totalAdded;
+      } else {
+        (debtor.history || []).forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+        });
+      }
+      if (typeof debtor.totalSubtracted === "number") {
+        totalSub = debtor.totalSubtracted;
+      } else {
+        (debtor.history || []).forEach(h => {
+          if (h.type === "sub") totalSub += h.amount || 0;
+        });
+      }
+      const remaining = totalAdded - totalSub;
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 mb-3 shadow border border-gray-200 dark:border-gray-700">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+              ${debtor.name ? debtor.name.slice(0,2).toUpperCase() : '??'}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-bold text-lg text-gray-900 dark:text-white">${debtor.name}</span>
+                <span class="text-blue-600 dark:text-blue-300 text-sm font-mono">#${debtor.code || debtor.id}</span>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <span class="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded">${result.matchType}: ${result.match}</span>
+              </div>
+              ${result.historyItem ? `
+                <div class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                  <span class="font-semibold">${result.historyItem.type === 'add' ? '+' : '-'}${result.historyItem.amount} so'm</span>
+                  ${result.historyItem.product ? ` (${result.historyItem.product})` : ''}
+                  ${result.historyItem.note ? `<br><span class="text-xs text-gray-500">${result.historyItem.note}</span>` : ''}
+                </div>
+              ` : ''}
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                Jami: <span class="font-semibold text-green-600">${totalAdded} so'm</span> | 
+                Ayirilgan: <span class="font-semibold text-red-600">${totalSub} so'm</span> | 
+                Qolgan: <span class="font-semibold text-blue-600">${remaining} so'm</span>
+              </div>
+              <button class="view-debtor-details-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm" data-id="${debtor.id}">
+                Batafsil ko'rish
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    // Batafsil ko'rish tugmalariga event biriktirish
+    searchAllDebtsResult.querySelectorAll('.view-debtor-details-btn').forEach(btn => {
+      btn.onclick = function() {
+        const debtorId = this.getAttribute('data-id');
+        const debtor = allDebtors.find(d => d.id === debtorId);
+        if (debtor) {
+          openDebtorModal(debtor);
+        }
+      };
+    });
+  }
+});
+
+// Qidiruv funksiyasi (modal uchun, eski koddan olib tashlash mumkin)
 searchByNameOrIdInput.addEventListener('input', async function () {
   const query = this.value.trim().toLowerCase();
   if (!query) {
