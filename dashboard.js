@@ -136,6 +136,8 @@ debtorForm.onsubmit = async (e) => {
     note,
     userId: user.uid,
     code,
+    totalAdded: amount,
+    totalSubtracted: 0,
     history: [{
       type: "add",
       amount,
@@ -148,6 +150,7 @@ debtorForm.onsubmit = async (e) => {
   });
   
   debtorForm.reset();
+  await updateUserTotals(); // Update user totals
   loadDebtors();
 };
 
@@ -234,9 +237,25 @@ async function renderStats(debtors) {
   totalSubtracted += totalAllSub;
   totalDebt += totalAllDebt;
 
+  // Try to get from Firebase user doc if available
+  const user = auth.currentUser;
+  if (user) {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (typeof data.totalAdded === "number") totalAdded = data.totalAdded;
+      if (typeof data.totalSubtracted === "number") totalSubtracted = data.totalSubtracted;
+      if (typeof data.totalDebt === "number") totalDebt = data.totalDebt;
+    }
+  }
+
   document.getElementById("totalAdded").innerText = totalAdded + " so‘m";
   document.getElementById("totalSubtracted").innerText = totalSubtracted + " so‘m";
   document.getElementById("totalDebt").innerText = totalDebt + " so‘m";
+
+  // Save to localStorage for bosh-sahifa.html
+  localStorage.setItem("totals", JSON.stringify({ totalAdded, totalSubtracted, totalDebt }));
 }
 
 // Render debtors list
@@ -248,6 +267,20 @@ function renderDebtors(debtors) {
   renderStats(debtors);
   const list = document.getElementById("debtorsList");
   list.innerHTML = "";
+
+  // Store debtor count for bosh-sahifa (including addedSearchUsers, unique by id)
+  let allDebtorIds = new Set(debtors.map(d => d.id));
+  let uniqueCount = debtors.length;
+  if (Array.isArray(addedSearchUsers) && addedSearchUsers.length > 0) {
+    addedSearchUsers.forEach(u => {
+      // Only count if not already in debtors
+      if (!allDebtorIds.has(u.id)) {
+        uniqueCount++;
+        allDebtorIds.add(u.id);
+      }
+    });
+  }
+  localStorage.setItem("debtorCount", uniqueCount);
 
   // Loader va "Qarzdorlar topilmadi" divlarini olish
   const loader = document.querySelector('.loader');
@@ -515,6 +548,7 @@ function openDebtorModal(debtor) {
       .data();
       
     openDebtorModal({ ...updated, id: debtor.id });
+    await updateUserTotals(); // Update user totals
     loadDebtors();
   };
 
@@ -550,6 +584,7 @@ function openDebtorModal(debtor) {
       .data();
       
     openDebtorModal({ ...updated, id: debtor.id });
+    await updateUserTotals(); // Update user totals
     loadDebtors();
   };
 
@@ -579,6 +614,7 @@ function openDebtorModal(debtor) {
             .find((docu) => docu.id === debtor.id)
             .data();
           openDebtorModal({ ...updated, id: debtor.id });
+          await updateUserTotals(); // Update user totals
           loadDebtors();
         });
       };
@@ -1279,6 +1315,55 @@ function showRatingCard(onRated) {
       if (typeof onRated === "function") onRated(rating);
     };
   });
+}
+
+// Function to update user totals in Firebase
+async function updateUserTotals() {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  // Get all debtors for this user
+  const snapshot = await getDocs(collection(db, "debtors"));
+  let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
+  
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    if (data.userId === user.uid) {
+      // Use stored totals if available, otherwise calculate from history
+      if (typeof data.totalAdded === "number") {
+        totalAdded += data.totalAdded;
+      } else {
+        (data.history || []).forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+        });
+      }
+      
+      if (typeof data.totalSubtracted === "number") {
+        totalSubtracted += data.totalSubtracted;
+      } else {
+        (data.history || []).forEach(h => {
+          if (h.type === "sub") totalSubtracted += h.amount || 0;
+        });
+      }
+    }
+  });
+
+  // Add search users totals
+  const { totalAllAdded, totalAllSub, totalAllDebt } = await getAddedSearchUsersTotals();
+  totalAdded += totalAllAdded;
+  totalSubtracted += totalAllSub;
+  totalDebt = totalAdded - totalSubtracted;
+
+  // Update user document with totals
+  const userRef = doc(db, "users", user.uid);
+  await updateDoc(userRef, {
+    totalAdded,
+    totalSubtracted,
+    totalDebt,
+    lastUpdated: Timestamp.now()
+  });
+
+  return { totalAdded, totalSubtracted, totalDebt };
 }
 
 
