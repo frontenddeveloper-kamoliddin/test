@@ -1017,7 +1017,7 @@ searchByNameOrIdInput.addEventListener('input', async function () {
   }
 });
 
-// Dashboardda search orqali qo‘shilgan userlarni ko‘rsatish
+// Dashboardda search orqali qo'shilgan userlarni ko'rsatish
 async function renderAddedSearchUsers() {
   // Loader va "Qarzdorlar topilmadi" divlarini olish
   const loader = document.querySelector('.loader');
@@ -1036,7 +1036,7 @@ async function renderAddedSearchUsers() {
     debtorsList.parentNode.insertBefore(container, debtorsList);
   }
 
-  // Har bir user uchun jami qo‘shilganni olish va card yasash
+  // Har bir user uchun jami qo'shilganni olish va card yasash
   container.innerHTML = '';
   for (let idx = 0; idx < addedSearchUsers.length; idx++) {
     const user = addedSearchUsers[idx];
@@ -1047,7 +1047,7 @@ async function renderAddedSearchUsers() {
       .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
 
     if (debtor) {
-      // Avval totalAdded va totalSubtracted maydonidan, bo‘lmasa history dan hisoblab olamiz
+      // Avval totalAdded va totalSubtracted maydonidan, bo'lmasa history dan hisoblab olamiz
       if (typeof debtor.totalAdded === "number") {
         totalAdded = debtor.totalAdded;
       } else {
@@ -1087,30 +1087,31 @@ async function renderAddedSearchUsers() {
           </div>
           <div class="text-xs text-gray-500 dark:text-gray-400 font-mono mb-1">ID: ${user.id}</div>
           <div class="mt-1 font-semibold text-base text-gray-700 dark:text-gray-200">
-            Jami qo‘shilgan: <span class="text-green-600 dark:text-green-400 font-bold">${totalAdded} so‘m</span>
+            Jami qo'shilgan: <span class="text-green-600 dark:text-green-400 font-bold">${totalAdded} so'm</span>
           </div>
           <div class="mt-1 font-semibold text-base">
-            <span class="text-red-600 dark:text-red-400">Jami ayirilgan: ${totalSub} so‘m</span>
+            <span class="text-red-600 dark:text-red-400">Jami ayirilgan: ${totalSub} so'm</span>
           </div>
           <div class="mt-1 font-semibold text-base">
-            Qolgan qarzdorlik: <span class="text-blue-700 dark:text-blue-400 font-bold">${remaining} so‘m</span>
+            Qolgan qarzdorlik: <span class="text-blue-700 dark:text-blue-400 font-bold">${remaining} so'm</span>
           </div>
           <div class="flex flex-col sm:flex-row gap-2 mt-4 w-full">
             <button class="batafsil-search-user-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">Batafsil</button>
-            <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">O‘chirish</button>
+            <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">O'chirish</button>
           </div>
         </div>
       </div>
     `;
   }
 
-  // O‘chirish va batafsil tugmalari uchun eventlar
+  // O'chirish va batafsil tugmalari uchun eventlar
   container.querySelectorAll('.remove-search-user-btn').forEach(btn => {
     btn.onclick = function() {
       const userId = this.getAttribute('data-id');
       addedSearchUsers = addedSearchUsers.filter(u => u.id !== userId);
       renderAddedSearchUsers();
       saveAddedSearchUsers();
+      updateDebtorCount(); // Update debtor count when removing
     };
   });
   container.querySelectorAll('.batafsil-search-user-btn').forEach(btn => {
@@ -1125,7 +1126,7 @@ async function renderAddedSearchUsers() {
       if (debtor) {
         openDebtorModal(debtor);
       } else {
-        if (await showConfirmDiv("qarz qo‘shish uchun yangi qarzdor yaratilsinmi?")) {
+        if (await showConfirmDiv("qarz qo'shish uchun yangi qarzdor yaratilsinmi?")) {
           const user = auth.currentUser;
           if (!user) return;
           const newDebtorRef = await addDoc(collection(db, "debtors"), {
@@ -1147,6 +1148,36 @@ async function renderAddedSearchUsers() {
     };
   });
   saveAddedSearchUsers();
+  updateDebtorCount(); // Update debtor count after rendering
+}
+
+// Function to update debtor count including addedSearchUsers
+function updateDebtorCount() {
+  // Get current debtors count
+  const debtorsList = document.getElementById('debtorsList');
+  const currentDebtors = debtorsList ? debtorsList.children.length : 0;
+  
+  // Calculate total including addedSearchUsers
+  let totalDebtorsCount = currentDebtors;
+  
+  // Add unique addedSearchUsers that are not already in debtors
+  const existingDebtorIds = new Set();
+  if (debtorsList) {
+    Array.from(debtorsList.children).forEach(card => {
+      const dataId = card.querySelector('[data-id]')?.getAttribute('data-id');
+      if (dataId) existingDebtorIds.add(dataId);
+    });
+  }
+  
+  addedSearchUsers.forEach(user => {
+    if (!existingDebtorIds.has(user.id)) {
+      totalDebtorsCount++;
+      existingDebtorIds.add(user.id);
+    }
+  });
+  
+  // Store in localStorage for bosh-sahifa
+  localStorage.setItem("debtorCount", totalDebtorsCount);
 }
 
 // Modalni ko‘rsatish uchun yordamchi funksiya
@@ -1209,6 +1240,7 @@ document.querySelectorAll('.add-search-user-btn').forEach(btn => {
       addedSearchUsers.push(user);
       renderAddedSearchUsers();
       saveAddedSearchUsers(); // <-- Qo‘shildi
+      updateDebtorCount(); // Update debtor count when adding
     }
   };
 });
