@@ -1,312 +1,90 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Xabarlar</title>
-  <link rel="shortcut icon" href="./img/ChatGPT Image Jun 30, 2025, 01_04_34 PM.png" type="image/x-icon">
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- <style>
-    .id-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(45deg, #4a90e2, #6bb9f0);
-            border-bottom-left-radius: 100%;
-            z-index: 1;
-        }
-        .name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-    .batafsil-qarzdorliklar {
-      max-height: 400px; 
-      overflow-y: auto; 
-    }
-   
-    .batafsil-modal {
-      max-height: 70vh;   
-      overflow-y: auto;   
-      padding: 16px;     
-    }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #181f2a;
-      margin: 0;
-      min-height: 100vh;
-    }
-    .stat-card {
-      min-width: 220px;
-      min-height: 140px;
-      border-radius: 24px;
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
-      padding: 36px 20px 28px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 0;
-      margin-top: 0;
-      transition: transform 0.2s, box-shadow 0.2s;
-      border: 1.5px solid rgba(255,255,255,0.08);
-    }
-    .stat-card:hover {
-      transform: translateY(-6px) scale(1.04);
-      box-shadow: 0 16px 40px 0 rgba(31, 38, 135, 0.22);
-    }
-    .stat-blue {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      color: #fff;
-    }
-    .stat-red {
-      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-      color: #fff;
-    }
-    .stat-green {
-      background: linear-gradient(135deg, #22c55e 0%, #166534 100%);
-      color: #fff;
-    }
-    .stat-yellow {
-      background: linear-gradient(135deg, #f59e42 0%, #b45309 100%);
-      color: #fff;
-    }
-    .stat-value {
-      font-size: 2.8rem;
-      font-weight: bold;
-      margin-top: 12px;
-      margin-bottom: 0;
-      letter-spacing: 1.5px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.10);
-    }
-    .chart-card {
-      background: linear-gradient(135deg, #232b36 60%, #232b36 100%);
-      border-radius: 22px;
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
-      padding: 28px 18px 18px 18px;
-      margin-bottom: 0;
-      min-height: 320px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-    }
-    .chart-title {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 18px;
-    }
-    .debtors-table-card {
-      background: linear-gradient(135deg, #2d3543 60%, #232b36 100%);
-      border-radius: 28px;
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
-      padding: 32px 18px 24px 18px;
-      margin-bottom: 0;
-      min-height: 320px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-    }
-    .debtors-table-card .chart-title {
-      color: #fff;
-      font-size: 1.35rem;
-      font-weight: 700;
-      margin-bottom: 22px;
-    }
-    .debtors-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      background: rgba(255,255,255,0.01);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-    .debtors-table thead tr {
-      background: rgba(255,255,255,0.08);
-    }
-    .debtors-table th, .debtors-table td {
-      padding: 14px 18px;
-      font-size: 1.08rem;
-      text-align: left;
-    }
-    .debtors-table th {
-      font-weight: 700;
-      color: #fff;
-      letter-spacing: 0.5px;
-      border-bottom: 2px solid #374151;
-    }
-    .debtors-table td {
-      color: #e5e7eb;
-      border-bottom: 1px solid #2d3543;
-    }
-    .debtors-table tbody tr:last-child td {
-      border-bottom: none;
-    }
-    .debtors-table tbody tr:hover {
-      background: rgba(59,130,246,0.10);
-      transition: background 0.2s;
-    }
-    @media (max-width: 900px) {
-      .stat-card { min-width: 140px; min-height: 100px; padding: 16px 6px; }
-      .stat-value { font-size: 1.5rem; }
-      .chart-title { font-size: 1.1rem; }
-      .debtors-table th, .debtors-table td { padding: 8px 6px; font-size: 0.98rem; }
-      .debtors-table-card { padding: 16px 4px; }
-    }
-    .id-number {
-            font-size: 18px;
-            color: #7f8c8d;
-            margin-bottom: 20px;
-        }
-        .content {
-            position: relative;
-            z-index: 2;
-        }
-        .id-card {
-            width: 300px;
-            height: 100px;
-            background: linear-gradient(135deg, #ffffff, #f0f0f0);
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            padding: 25px;
-            position: relative;
-            overflow: hidden;
-        }
-  </style> -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xabarlar - Kodni tasdiqlash</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md flex flex-col gap-6">
+    <h1 class="text-2xl font-bold mb-2">Kodni tasdiqlash</h1>
+    <input id="codeInput" type="text" maxlength="6" placeholder="Kodni kiriting" class="p-3 rounded bg-gray-700 text-white text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <button id="verifyCodeBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-semibold transition">Tasdiqlash</button>
+    <div id="resultMsg" class="mt-2 text-center text-red-400"></div>
+    <div id="qarzQoshishDiv" class="mt-4 hidden">
+      <button id="qarzQoshishBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-semibold transition">Qarz qo‘shish</button>
+    </div>
 
-  <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300">
-    <div class="flex items-center justify-between p-4 border-b">
-      <div>
-        <!-- Dark mode toggle button -->
-        <button id="toggleDark" class="mr-2 text-gray-500 hover:text-black transition text-xl" title="Dark mode">
-          <svg id="darkIcon" xmlns="http://www.w3.org/2000/svg" class="inline w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
-          </svg>
-        </button>
-        <span id="userName" class="font-bold text-lg"></span>
-        <span id="userId" class="text-xs text-white ml-2"></span>
-      </div>
-      <button id="closeSidebar" class="text-gray-500 hover:text-red-500">&times;</button>
-    </div>
-    <div class="p-4 space-y-4">
-      <button id="logoutBtn" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition">Chiqish</button>
-      <button onclick="window.location.href='dashboard.html'" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Bosh sahifa</button>
-      <button onclick="window.location.href='bosh-sahifa.html'" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Malumotlar</button>
-      
-    </div>
+    <button id="goDashboardBtn" class="mt-1 w-full bg-gray-700 hover:bg-blue-500 text-white px-4 py-2 rounded font-semibold transition">Dashboardga qaytish</button>
   </div>
- 
-  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-40 z-20 hidden"></div>
 
-  <div class="min-h-screen flex flex-col items-center justify-start pt-6">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    <div class="w-full max-w-5xl flex items-center justify-between mb-8 px-4">
-      <button id="openSidebar" class="text-3xl text-gray-200 hover:text-white focus:outline-none transition">&#9776;</button>
-      <h2 class="text-3xl font-bold text-white text-center flex-1" style="letter-spacing:1px;">Xabarlar</h2>
-      <div style="width:40px;"></div>
-    </div>
-    
-    <!-- KOD KIRITISH QISMI -->
-    <div class="w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 flex flex-col items-center">
-      <label for="codeInput" class="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-200">Kod kiriting</label>
-      <input id="codeInput" type="text" maxlength="6" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:bg-gray-700 dark:text-white mb-4 text-center text-xl tracking-widest" placeholder="______" autocomplete="off">
-      <button id="checkCodeBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded font-bold transition w-full">Tekshirish</button>
-      <div id="codeStatus" class="mt-4 text-center text-lg font-bold"></div>
-      <div id="addDebtorWrap" class="mt-4"></div>
-    </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyACHEuejKVniBAcYExQxk23A9QD84bUaB4",
-  authDomain: "new-project-6075a.firebaseapp.com",
-  projectId: "new-project-6075a",
-  storageBucket: "new-project-6075a.appspot.com",
-  messagingSenderId: "974403904500",
-  appId: "1:974403904500:web:5d4edb5db8f5432cbdcfa1",
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let currentUserId = null;
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
-    window.location.href = "index.html";
-  } else {
-    currentUserId = user.uid;
-  }
-});
-
-const codeInput = document.getElementById('codeInput');
-const checkCodeBtn = document.getElementById('checkCodeBtn');
-const codeStatus = document.getElementById('codeStatus');
-const addDebtorWrap = document.getElementById('addDebtorWrap');
-
-checkCodeBtn.onclick = async () => {
-  const code = codeInput.value.trim();
-  codeStatus.textContent = '';
-  addDebtorWrap.innerHTML = '';
-  if (!code || code.length !== 6) {
-    codeStatus.textContent = 'Kod 6 xonali bo‘lishi kerak!';
-    codeStatus.className = 'mt-4 text-center text-lg font-bold text-red-500';
-    return;
-  }
-  if (!currentUserId) {
-    codeStatus.textContent = 'Avval tizimga kiring!';
-    codeStatus.className = 'mt-4 text-center text-lg font-bold text-red-500';
-    return;
-  }
-  // Kodni Firestore dan tekshirish
-  codeStatus.textContent = 'Tekshirilmoqda...';
-  codeStatus.className = 'mt-4 text-center text-lg font-bold text-blue-500';
-  const q = query(collection(db, 'messages'), where('to', '==', currentUserId), where('code', '==', code), where('status', '==', 'pending'));
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    codeStatus.textContent = 'Kod to‘g‘ri!';
-    codeStatus.className = 'mt-4 text-center text-lg font-bold text-green-600';
-    // Qo‘shish tugmasi chiqadi
-    addDebtorWrap.innerHTML = `<button id="addDebtorBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded font-bold transition w-full">Qo‘shish</button>`;
-    document.getElementById('addDebtorBtn').onclick = async () => {
-      // Kodni ishlatilgan deb belgilash
-      const docId = snap.docs[0].id;
-      await updateDoc(doc(db, 'messages', docId), { status: 'used' });
-      addDebtorWrap.innerHTML = '<div class="text-green-600 font-bold mt-2">Qarzdorlik muvaffaqiyatli qo‘shildi yoki tasdiqlandi!</div>';
+    // Firebase config (from dashboard.js)
+    const firebaseConfig = {
+      apiKey: "AIzaSyACHEuejKVniBAcYExQxk23A9QD84bUaB4",
+      authDomain: "new-project-6075a.firebaseapp.com",
+      projectId: "new-project-6075a",
+      storageBucket: "new-project-6075a.appspot.com",
+      messagingSenderId: "974403904500",
+      appId: "1:974403904500:web:5d4edb5db8f5432cbdcfa1",
     };
-  } else {
-    codeStatus.textContent = 'Kod noto‘g‘ri yoki eskirgan!';
-    codeStatus.className = 'mt-4 text-center text-lg font-bold text-red-500';
-  }
-};
-</script>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const codeInput = document.getElementById('codeInput');
+    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+    const resultMsg = document.getElementById('resultMsg');
+    const qarzQoshishDiv = document.getElementById('qarzQoshishDiv');
+    const qarzQoshishBtn = document.getElementById('qarzQoshishBtn');
+    let foundMessage = null;
+
+    verifyCodeBtn.onclick = async () => {
+      const code = codeInput.value.trim();
+      resultMsg.textContent = '';
+      qarzQoshishDiv.classList.add('hidden');
+      if (!code || code.length !== 6) {
+        resultMsg.textContent = 'Kod 6 xonali bo‘lishi kerak!';
+        return;
+      }
+      // Kodni Firestore'dan tekshirish
+      const q = query(collection(db, 'messages'), where('code', '==', code));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        // Kod topildi
+        foundMessage = snap.docs[0];
+        const data = foundMessage.data();
+        if (data.status === 'used') {
+          resultMsg.textContent = 'Bu kod allaqachon ishlatilgan.';
+          return;
+        }
+        resultMsg.textContent = 'Kod to‘g‘ri! Endi qarz qo‘shishingiz mumkin.';
+        resultMsg.classList.remove('text-red-400');
+        resultMsg.classList.add('text-green-400');
+        qarzQoshishDiv.classList.remove('hidden');
+      } else {
+        resultMsg.textContent = 'Kod noto‘g‘ri yoki topilmadi!';
+        resultMsg.classList.remove('text-green-400');
+        resultMsg.classList.add('text-red-400');
+      }
+    };
+
+    qarzQoshishBtn.onclick = async () => {
+      if (!foundMessage) return;
+      // Kodni ishlatilgan deb belgilash
+      await updateDoc(doc(db, 'messages', foundMessage.id), { status: 'used' });
+      alert('Qarz qo‘shish oynasi ochiladi (bu joyda modal yoki boshqa sahifa ochish mumkin).');
+      // Bu yerda kerakli modal yoki boshqa funksiya chaqiriladi
+    };
+  </script>
+
 <script>
-  // Sidebar ochish va yopish
-  document.getElementById("openSidebar").onclick = function() {
-    document.getElementById("sidebar").classList.remove("-translate-x-full");
-    document.getElementById("sidebarOverlay").classList.remove("hidden");
-  };
-  document.getElementById("closeSidebar").onclick = function() {
-    document.getElementById("sidebar").classList.add("-translate-x-full");
-    document.getElementById("sidebarOverlay").classList.add("hidden");
-  };
-  document.getElementById("sidebarOverlay").onclick = function() {
-    document.getElementById("sidebar").classList.add("-translate-x-full");
-    document.getElementById("sidebarOverlay").classList.add("hidden");
-  };
+document.getElementById('goDashboardBtn').onclick = function() {
+  window.location.href = 'dashboard.html';
+};
 </script>
 </body>
 </html>

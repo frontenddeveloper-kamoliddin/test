@@ -1407,7 +1407,7 @@ function showSendCodeCard(userId) {
       <button id="closeSendCodeCard" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl">&times;</button>
       <div class="mb-4 font-bold text-lg">Kod jonatish</div>
       <div class="mb-2 text-gray-700 dark:text-gray-200">${user ? user.name : ''} (#${userId})</div>
-      <input id="sendCodeInput" type="text" placeholder="Kod kiriting..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:bg-gray-700 dark:text-white mb-4" />
+      
       <button id="submitSendCode" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow w-full">Jonatish</button>
     </div>
   `;
