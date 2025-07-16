@@ -75,19 +75,40 @@
 
     qarzQoshishBtn.onclick = async () => {
       if (!foundMessage) return;
-      // Kodni ishlatilgan deb belgilash
       await updateDoc(doc(db, 'messages', foundMessage.id), { status: 'used' });
 
       // Kodni yuborgan userni topamiz
       const toUserId = foundMessage.data().to;
-      const userSnap = await getDoc(doc(db, 'users', toUserId));
+
+      // 1. Avval document id bo‘yicha qidiramiz
+      let userSnap = await getDoc(doc(db, 'users', toUserId));
+      let userData = null;
+      let userDocId = toUserId;
+
+      // 2. Agar topilmasa, sidebarUserCode bo‘yicha qidiramiz
       if (!userSnap.exists()) {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        let found = null;
+        usersSnap.forEach(docu => {
+          if (docu.data().sidebarUserCode === toUserId) {
+            found = docu;
+          }
+        });
+        if (found) {
+          userSnap = found;
+          userData = found.data();
+          userDocId = found.id;
+        }
+      } else {
+        userData = userSnap.data();
+      }
+
+      if (!userData) {
         alert('Kod yuborgan foydalanuvchi topilmadi!');
         return;
       }
-      const userData = userSnap.data();
       const userObj = {
-        id: userData.sidebarUserCode || toUserId,
+        id: userData.sidebarUserCode || userDocId,
         name: userData.name || "Noma'lum",
         number: userData.sidebarNumber || ""
       };
@@ -114,7 +135,6 @@
       }
 
       alert('Qarzdor muvaffaqiyatli qo‘shildi! Dashboardga qayting.');
-      // Istasangiz, avtomatik dashboardga yo‘naltiring:
       // window.location.href = 'dashboard.html';
     };
   </script>
