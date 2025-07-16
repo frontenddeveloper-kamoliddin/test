@@ -997,21 +997,17 @@ searchByNameOrIdInput.addEventListener('input', async function () {
             </div>
             <div class="text-xs text-gray-400 font-mono">ID: ${user.id}</div>
           </div>
-          <button class="add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow text-sm" data-id="${user.id}">Qo‘shish</button>
+          <!-- <button class=\"add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow text-sm\" data-id=\"${user.id}\">Qo‘shish</button> -->
+          <button class="send-code-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow text-sm" data-id="${user.id}">Kod jonatish</button>
         </div>
         `;
       })
       .join('');
-    // Qo‘shish tugmalariga event biriktirish
-    document.querySelectorAll('.add-search-user-btn').forEach(btn => {
+    // Yangi Kod jonatish tugmasi uchun event
+    document.querySelectorAll('.send-code-btn').forEach(btn => {
       btn.onclick = function() {
         const userId = this.getAttribute('data-id');
-        const user = allUsers.find(u => u.id === userId);
-        if (user && !addedSearchUsers.some(u => u.id === user.id)) {
-          addedSearchUsers.push(user);
-          renderAddedSearchUsers();
-          saveAddedSearchUsers();
-        }
+        showSendCodeCard(userId);
       };
     });
   }
@@ -1396,6 +1392,41 @@ async function updateUserTotals() {
   });
 
   return { totalAdded, totalSubtracted, totalDebt };
+}
+
+// Modal/card function for Kod jonatish
+function showSendCodeCard(userId) {
+  // Remove old modal if exists
+  document.getElementById('sendCodeCardModal')?.remove();
+  const user = allUsers.find(u => u.id === userId);
+  const div = document.createElement('div');
+  div.id = 'sendCodeCardModal';
+  div.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-40';
+  div.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-xs text-center border border-gray-300 dark:border-gray-700 relative">
+      <button id="closeSendCodeCard" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl">&times;</button>
+      <div class="mb-4 font-bold text-lg">Kod jonatish</div>
+      <div class="mb-2 text-gray-700 dark:text-gray-200">${user ? user.name : ''} (#${userId})</div>
+      <input id="sendCodeInput" type="text" placeholder="Kod kiriting..." class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:bg-gray-700 dark:text-white mb-4" />
+      <button id="submitSendCode" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow w-full">Jonatish</button>
+    </div>
+  `;
+  document.body.appendChild(div);
+  div.querySelector('#closeSendCodeCard').onclick = () => div.remove();
+  div.querySelector('#submitSendCode').onclick = async () => {
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Save to Firestore 'messages' collection
+    await addDoc(collection(db, 'messages'), {
+      to: userId,
+      code,
+      createdAt: Timestamp.now(),
+      status: 'pending',
+      from: auth.currentUser?.uid || null
+    });
+    alert('Kod yuborildi: ' + code + '\nID egasi xabarlar sahifasidan kodni kiritishi kerak.');
+    div.remove();
+  };
 }
 
 

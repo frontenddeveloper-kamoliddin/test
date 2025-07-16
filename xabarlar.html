@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard</title>
+  <title>Xabarlar</title>
   <link rel="shortcut icon" href="./img/ChatGPT Image Jun 30, 2025, 01_04_34 PM.png" type="image/x-icon">
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <style>
+  <!-- <style>
     .id-card::before {
             content: "";
             position: absolute;
@@ -179,7 +179,7 @@
             position: relative;
             overflow: hidden;
         }
-  </style>
+  </style> -->
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
 
@@ -200,7 +200,7 @@
     <div class="p-4 space-y-4">
       <button id="logoutBtn" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition">Chiqish</button>
       <button onclick="window.location.href='dashboard.html'" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Bosh sahifa</button>
-      <button onclick="window.location.href='xabarlar.html'" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Xabarlar</button>
+      <button onclick="window.location.href='bosh-sahifa.html'" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Malumotlar</button>
       
     </div>
   </div>
@@ -211,76 +211,102 @@
 
     <div class="w-full max-w-5xl flex items-center justify-between mb-8 px-4">
       <button id="openSidebar" class="text-3xl text-gray-200 hover:text-white focus:outline-none transition">&#9776;</button>
-      <h2 class="text-3xl font-bold text-white text-center flex-1" style="letter-spacing:1px;">Qarzdorlar Dashboard</h2>
+      <h2 class="text-3xl font-bold text-white text-center flex-1" style="letter-spacing:1px;">Xabarlar</h2>
       <div style="width:40px;"></div>
     </div>
-    <div class="w-full max-w-5xl flex flex-col md:flex-row gap-6 mb-6 px-4">
-      <div class="flex-1 stat-card stat-blue text-center">
-        <div>Umumiy qo‘shilgan</div>
-        <div id="totalAdded" class="stat-value">0 so‘m</div>
-      </div>
-      <div class="flex-1 stat-card stat-red text-center">
-        <div>Umumiy ayirilgan</div>
-        <div id="totalSubtracted" class="stat-value">0 so‘m</div>
-      </div>
-      <div class="flex-1 stat-card stat-green text-center">
-        <div>Umumiy qarzdorlik</div>
-        <div id="totalDebt" class="stat-value">0 so‘m</div>
-      </div>
-      <div class="flex-1 stat-card stat-yellow text-center">
-        <div>Qarzdorlar soni</div>
-        <div id="totalDebtors" class="stat-value">0</div>
-      </div>
+    
+    <!-- KOD KIRITISH QISMI -->
+    <div class="w-full max-w-md mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8 flex flex-col items-center">
+      <label for="codeInput" class="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-200">Kod kiriting</label>
+      <input id="codeInput" type="text" maxlength="6" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:bg-gray-700 dark:text-white mb-4 text-center text-xl tracking-widest" placeholder="______" autocomplete="off">
+      <button id="checkCodeBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded font-bold transition w-full">Tekshirish</button>
+      <div id="codeStatus" class="mt-4 text-center text-lg font-bold"></div>
+      <div id="addDebtorWrap" class="mt-4"></div>
     </div>
-    <div class="w-full max-w-5xl flex flex-col md:flex-row gap-6 mb-8 px-4">
-      <div class="flex-1 chart-card">
-        <div class="chart-title">Qarzlar harakati (so‘nggi 7 kun)</div>
-        <canvas id="debtChart" height="180"></canvas>
-      </div>
-      <div class="flex-1 chart-card">
-        <div class="chart-title">Raiting: Eng ko‘p qarz olganlar</div>
-        <canvas id="ratingChart" height="180"></canvas>
-      </div>
-    </div>
-    <div class="w-full max-w-5xl px-4 mb-10">
-      <div class="debtors-table-card">
-        <div class="chart-title">Eng uzoqdan beri bermayotgan qarzdorlar</div>
-        <div class="overflow-x-auto">
-          <table class="debtors-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Ism</th>
-                <th>Umumiy qarz</th>
-                <th>Oxirgi to‘lov/qo‘shilgan sana</th>
-              </tr>
-            </thead>
-            <tbody id="longestDebtorsTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <div class="w-full max-w-5xl px-4 mb-10">
-      <div class="debtors-table-card">
-        <div class="chart-title">Eng ko‘p qarz olgan insonlar</div>
-        <div class="overflow-x-auto">
-          <table class="debtors-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Ism</th>
-                <th>Umumiy qarz</th>
-              </tr>
-            </thead>
-            <tbody id="topDebtorsTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-   
-  
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="bosh-sahifa.js"></script>
-<script type="module" src="dashboard.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, getDocs, updateDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyACHEuejKVniBAcYExQxk23A9QD84bUaB4",
+  authDomain: "new-project-6075a.firebaseapp.com",
+  projectId: "new-project-6075a",
+  storageBucket: "new-project-6075a.appspot.com",
+  messagingSenderId: "974403904500",
+  appId: "1:974403904500:web:5d4edb5db8f5432cbdcfa1",
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUserId = null;
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+  } else {
+    currentUserId = user.uid;
+  }
+});
+
+const codeInput = document.getElementById('codeInput');
+const checkCodeBtn = document.getElementById('checkCodeBtn');
+const codeStatus = document.getElementById('codeStatus');
+const addDebtorWrap = document.getElementById('addDebtorWrap');
+
+checkCodeBtn.onclick = async () => {
+  const code = codeInput.value.trim();
+  codeStatus.textContent = '';
+  addDebtorWrap.innerHTML = '';
+  if (!code || code.length !== 6) {
+    codeStatus.textContent = 'Kod 6 xonali bo‘lishi kerak!';
+    codeStatus.className = 'mt-4 text-center text-lg font-bold text-red-500';
+    return;
+  }
+  if (!currentUserId) {
+    codeStatus.textContent = 'Avval tizimga kiring!';
+    codeStatus.className = 'mt-4 text-center text-lg font-bold text-red-500';
+    return;
+  }
+  // Kodni Firestore dan tekshirish
+  codeStatus.textContent = 'Tekshirilmoqda...';
+  codeStatus.className = 'mt-4 text-center text-lg font-bold text-blue-500';
+  const q = query(collection(db, 'messages'), where('to', '==', currentUserId), where('code', '==', code), where('status', '==', 'pending'));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    codeStatus.textContent = 'Kod to‘g‘ri!';
+    codeStatus.className = 'mt-4 text-center text-lg font-bold text-green-600';
+    // Qo‘shish tugmasi chiqadi
+    addDebtorWrap.innerHTML = `<button id="addDebtorBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded font-bold transition w-full">Qo‘shish</button>`;
+    document.getElementById('addDebtorBtn').onclick = async () => {
+      // Kodni ishlatilgan deb belgilash
+      const docId = snap.docs[0].id;
+      await updateDoc(doc(db, 'messages', docId), { status: 'used' });
+      addDebtorWrap.innerHTML = '<div class="text-green-600 font-bold mt-2">Qarzdorlik muvaffaqiyatli qo‘shildi yoki tasdiqlandi!</div>';
+    };
+  } else {
+    codeStatus.textContent = 'Kod noto‘g‘ri yoki eskirgan!';
+    codeStatus.className = 'mt-4 text-center text-lg font-bold text-red-500';
+  }
+};
+</script>
+<script>
+  // Sidebar ochish va yopish
+  document.getElementById("openSidebar").onclick = function() {
+    document.getElementById("sidebar").classList.remove("-translate-x-full");
+    document.getElementById("sidebarOverlay").classList.remove("hidden");
+  };
+  document.getElementById("closeSidebar").onclick = function() {
+    document.getElementById("sidebar").classList.add("-translate-x-full");
+    document.getElementById("sidebarOverlay").classList.add("hidden");
+  };
+  document.getElementById("sidebarOverlay").onclick = function() {
+    document.getElementById("sidebar").classList.add("-translate-x-full");
+    document.getElementById("sidebarOverlay").classList.add("hidden");
+  };
+</script>
 </body>
 </html>
