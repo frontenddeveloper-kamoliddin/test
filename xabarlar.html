@@ -13,7 +13,7 @@
     <button id="verifyCodeBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-semibold transition">Tasdiqlash</button>
     <div id="resultMsg" class="mt-2 text-center text-red-400"></div>
     <div id="qarzQoshishDiv" class="mt-4 hidden">
-      <button id="qarzQoshishBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-semibold transition">Qarz qo‘shish</button>
+      <button id="qarzQoshishBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded font-semibold transition">Qo‘shish</button>
     </div>
 
     <button id="goDashboardBtn" class="mt-1 w-full bg-gray-700 hover:bg-blue-500 text-white px-4 py-2 rounded font-semibold transition">Dashboardga qaytish</button>
@@ -21,7 +21,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     // Firebase config (from dashboard.js)
     const firebaseConfig = {
@@ -76,8 +77,45 @@
       if (!foundMessage) return;
       // Kodni ishlatilgan deb belgilash
       await updateDoc(doc(db, 'messages', foundMessage.id), { status: 'used' });
-      alert('Qarz qo‘shish oynasi ochiladi (bu joyda modal yoki boshqa sahifa ochish mumkin).');
-      // Bu yerda kerakli modal yoki boshqa funksiya chaqiriladi
+
+      // Kodni yuborgan userni topamiz
+      const toUserId = foundMessage.data().to;
+      const userSnap = await getDoc(doc(db, 'users', toUserId));
+      if (!userSnap.exists()) {
+        alert('Kod yuborgan foydalanuvchi topilmadi!');
+        return;
+      }
+      const userData = userSnap.data();
+      const userObj = {
+        id: userData.sidebarUserCode || toUserId,
+        name: userData.name || "Noma'lum",
+        number: userData.sidebarNumber || ""
+      };
+
+      // Sizning useringizni aniqlash (hozir login bo‘lgan user)
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        alert('Avval tizimga kiring!');
+        return;
+      }
+
+      // addedSearchUsers massiviga qo‘shamiz va Firebase-ga saqlaymiz
+      const myUserRef = doc(db, 'users', currentUser.uid);
+      const myUserSnap = await getDoc(myUserRef);
+      let addedSearchUsers = [];
+      if (myUserSnap.exists() && Array.isArray(myUserSnap.data().addedSearchUsers)) {
+        addedSearchUsers = myUserSnap.data().addedSearchUsers;
+      }
+      // Dublikatsiyani oldini olish
+      if (!addedSearchUsers.some(u => u.id === userObj.id)) {
+        addedSearchUsers.push(userObj);
+        await updateDoc(myUserRef, { addedSearchUsers });
+      }
+
+      alert('Qarzdor muvaffaqiyatli qo‘shildi! Dashboardga qayting.');
+      // Istasangiz, avtomatik dashboardga yo‘naltiring:
+      // window.location.href = 'dashboard.html';
     };
   </script>
 
