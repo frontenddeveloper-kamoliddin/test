@@ -11,8 +11,6 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-console.log("bosh-sahifa.js loaded successfully");
-
 const firebaseConfig = {
   apiKey: "AIzaSyACHEuejKVniBAcYExQxk23A9QD84bUaB4",
   authDomain: "new-project-6075a.firebaseapp.com",
@@ -26,37 +24,46 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-console.log("Firebase initialized");
-
 onAuthStateChanged(auth, (user) => {
-  console.log("Auth state changed:", user ? "User logged in" : "No user");
   if (!user) {
-    console.log("No user, redirecting to index.html");
     window.location.href = "index.html";
   } else {
-    console.log("Loading user debtors stats for user:", user.uid);
     loadUserDebtorsStats(user);
   }
 });
 
 async function loadUserDebtorsStats(user) {
-  console.log("Starting loadUserDebtorsStats for user:", user.uid);
-  
   const snapshot = await getDocs(collection(db, "debtors"));
-  console.log("Total debtors in database:", snapshot.docs.length);
-  
   const debtors = snapshot.docs
     .map(doc => ({ ...doc.data(), id: doc.id }))
     .filter(d => d.userId === user.uid);
   
-  console.log(`Found ${debtors.length} debtors for user ${user.uid}`);
-  console.log("Debtors:", debtors.map(d => ({ name: d.name, userId: d.userId, id: d.id })));
+  // Load addedSearchUsers from user document
+  let addedSearchUsers = [];
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists() && Array.isArray(userSnap.data().addedSearchUsers)) {
+      addedSearchUsers = userSnap.data().addedSearchUsers;
+    }
+  } catch (error) {
+    console.log("Error loading addedSearchUsers:", error);
+  }
   
-  // Only use user's own debtors, not added search users
+  // Find and merge addedSearchUsers' debtors (unique by id)
   let allDebtors = [...debtors];
-  
-  console.log(`Total debtors: ${debtors.length}, All debtors: ${allDebtors.length}`);
-  renderStats(debtors, [], allDebtors);
+  const allDebtorsIds = new Set(debtors.map(d => d.id));
+  for (const user of addedSearchUsers) {
+    // Find debtor by userId, code, or id
+    const addedDebtor = snapshot.docs
+      .map(doc => ({ ...doc.data(), id: doc.id }))
+      .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
+    if (addedDebtor && !allDebtorsIds.has(addedDebtor.id)) {
+      allDebtors.push(addedDebtor);
+      allDebtorsIds.add(addedDebtor.id);
+    }
+  }
+  renderStats(debtors, addedSearchUsers, allDebtors);
 }
 
 function renderStats(debtors, addedSearchUsers = [], allDebtors = []) {
@@ -64,7 +71,6 @@ function renderStats(debtors, addedSearchUsers = [], allDebtors = []) {
     totalSubtracted = 0,
     totalDebt = 0;
   
-  // Calculate totals from user's own debtors only
   debtors.forEach((d) => {
     let add = 0,
       sub = 0;
@@ -77,25 +83,43 @@ function renderStats(debtors, addedSearchUsers = [], allDebtors = []) {
     totalDebt += add - sub;
   });
 
+  // Add totals from addedSearchUsers
+  addedSearchUsers.forEach((user) => {
+    // Find debtor data for this user
+    const debtor = allDebtors.find(d => 
+      d.userId === user.id || 
+      d.code === user.id || 
+      d.id === user.id
+    );
+    
+    if (debtor) {
+      let add = 0, sub = 0;
+      debtor.history?.forEach((h) => {
+        if (h.type === "add") add += h.amount;
+        if (h.type === "sub") sub += h.amount;
+      });
+      totalAdded += add;
+      totalSubtracted += sub;
+      totalDebt += add - sub;
+    }
+  });
+
   document.getElementById("totalAdded").innerText = totalAdded + " so'm";
   document.getElementById("totalSubtracted").innerText = totalSubtracted + " so'm";
   document.getElementById("totalDebt").innerText = totalDebt + " so'm";
   
-  // Calculate total debtors count (only user's own debtors)
-  let totalDebtorsCount = debtors.length;
+  // Calculate total debtors count including addedSearchUsers
+  let totalDebtorsCount = allDebtors.length;
   document.getElementById("totalDebtors").innerText = totalDebtorsCount;
 
-  // Pass user's own debtors to all render* functions
-  console.log("Debtors being passed to charts and tables:", debtors.map(d => d.name));
-  renderDebtChart(debtors);
-  renderRatingChart(debtors);
-  renderLongestDebtorsTable(debtors);
-  renderTopDebtorsTable(debtors);
+  // Pass allDebtors to all render* functions
+  renderDebtChart(allDebtors);
+  renderRatingChart(allDebtors);
+  renderLongestDebtorsTable(allDebtors);
+  renderTopDebtorsTable(allDebtors);
 }
 
 function renderLongestDebtorsTable(allDebtors) {
-  console.log(`Rendering longest debtors table with ${allDebtors.length} debtors`);
-  
   // For each debtor, find the last payment (sub) or last add if no payment
   const now = new Date();
   const rows = allDebtors.map((debtor) => {
@@ -117,7 +141,7 @@ function renderLongestDebtorsTable(allDebtors) {
       }
     });
     let lastAction = lastSub || lastAdd;
-    let lastActionLabel = lastSub ? 'To\'lov' : 'Qo\'shilgan';
+    let lastActionLabel = lastSub ? 'To‘lov' : 'Qo‘shilgan';
     return {
       name: debtor.name,
       total,
@@ -135,42 +159,20 @@ function renderLongestDebtorsTable(allDebtors) {
     return a.lastAction - b.lastAction;
   });
 
-  console.log(`Longest debtors table: ${rows.length} debtors with debt > 0`);
-
   const tbody = document.getElementById('longestDebtorsTable');
-  if (!tbody) {
-    console.error('longestDebtorsTable tbody not found!');
-    return;
-  }
-  
-  // If no debtors, show a message
-  if (rows.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="4" class="py-4 px-3 text-center text-gray-500">
-          Hali qarzdorlar yo'q yoki barcha qarzlar to'langan
-        </td>
-      </tr>
-    `;
-    console.log('No debtors with debt > 0 found');
-    return;
-  }
-  
   tbody.innerHTML = rows.slice(0, 10).map((row, i) => {
-    let dateStr = row.lastAction ? row.lastAction.toLocaleDateString('uz-UZ') : 'Ma\'lumot yo\'q';
+    let dateStr = row.lastAction ? row.lastAction.toLocaleDateString('uz-UZ') : 'Maʼlumot yo‘q';
     let label = row.lastActionLabel;
     return `<tr>
       <td class="py-2 px-3">${i + 1}</td>
       <td class="py-2 px-3">${row.name}</td>
-      <td class="py-2 px-3">${row.total} so'm</td>
+      <td class="py-2 px-3">${row.total} so‘m</td>
       <td class="py-2 px-3">${dateStr} <span class='text-xs text-gray-400'>(${label})</span></td>
     </tr>`;
   }).join('');
 }
 
 function renderTopDebtorsTable(allDebtors) {
-  console.log(`Rendering top debtors table with ${allDebtors.length} debtors`);
-  
   // Sort by total debt descending
   const rows = allDebtors.map((debtor) => {
     let total = 0;
@@ -186,32 +188,12 @@ function renderTopDebtorsTable(allDebtors) {
   .filter(d => d.total > 0)
   .sort((a, b) => b.total - a.total);
 
-  console.log(`Top debtors table: ${rows.length} debtors with debt > 0`);
-
   const tbody = document.getElementById('topDebtorsTable');
-  if (!tbody) {
-    console.error('topDebtorsTable tbody not found!');
-    return;
-  }
-  
-  // If no debtors, show a message
-  if (rows.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="3" class="py-4 px-3 text-center text-gray-500">
-          Hali qarzdorlar yo'q yoki barcha qarzlar to'langan
-        </td>
-      </tr>
-    `;
-    console.log('No debtors with debt > 0 found');
-    return;
-  }
-
   tbody.innerHTML = rows.slice(0, 10).map((row, i) => {
     return `<tr>
       <td>${i + 1}</td>
       <td>${row.name}</td>
-      <td>${row.total} so'm</td>
+      <td>${row.total} so‘m</td>
     </tr>`;
   }).join('');
 }

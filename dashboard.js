@@ -1411,16 +1411,23 @@ function showSendCodeCard(userId) {
   // Remove old modal if exists
   document.getElementById('sendCodeCardModal')?.remove();
   const user = allUsers.find(u => u.id === userId);
+  const currentUser = auth.currentUser;
+  
+  if (!currentUser) {
+    alert('Avval tizimga kiring!');
+    return;
+  }
+
   const div = document.createElement('div');
   div.id = 'sendCodeCardModal';
   div.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-40';
   div.innerHTML = `
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-xs text-center border border-gray-300 dark:border-gray-700 relative">
       <button id="closeSendCodeCard" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl">&times;</button>
-      <div class="mb-4 font-bold text-lg">Kod jonatish</div>
-      <div class="mb-2 text-gray-700 dark:text-gray-200">${user ? user.name : ''} (#${userId})</div>
+      <div class="mb-4 font-bold text-lg">Qarz qo'shish so'rovi</div>
+      <div class="mb-2 text-gray-700 dark:text-gray-200">${user ? user.name : ''} (#${userId}) ga so'rov yuborish</div>
       
-      <button id="submitSendCode" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow w-full">Jonatish</button>
+      <button id="submitSendCode" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow w-full">Yuborish</button>
     </div>
   `;
   document.body.appendChild(div);
@@ -1428,15 +1435,25 @@ function showSendCodeCard(userId) {
   div.querySelector('#submitSendCode').onclick = async () => {
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    // Save to Firestore 'messages' collection
+    
+    // Get current user info
+    const currentUserRef = doc(db, 'users', currentUser.uid);
+    const currentUserSnap = await getDoc(currentUserRef);
+    const currentUserData = currentUserSnap.exists() ? currentUserSnap.data() : {};
+    
+    // Save to Firestore 'messages' collection with request info
     await addDoc(collection(db, 'messages'), {
       to: userId,
       code,
       createdAt: Timestamp.now(),
       status: 'pending',
-      from: auth.currentUser?.uid || null
+      from: currentUser.uid,
+      fromName: currentUserData.name || 'Noma\'lum',
+      fromId: currentUserData.sidebarUserCode || currentUser.uid,
+      fromNumber: currentUserData.sidebarNumber || '',
+      requestType: 'debt_request'
     });
-    alert('Kod yuborildi: ' + code + '\nID egasi xabarlar sahifasidan kodni kiritishi kerak.');
+    alert('So\'rov yuborildi! ID egasi xabarlar sahifasida so\'rovni ko\'radi va javob beradi.');
     div.remove();
   };
 }

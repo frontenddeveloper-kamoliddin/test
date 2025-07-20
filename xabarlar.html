@@ -580,20 +580,27 @@
     </div>
 
     <div class="verification-card">
-      <h1 class="verification-title">Kodni tasdiqlash</h1>
-      <input id="codeInput" type="text" maxlength="6" placeholder="Kodni kiriting" class="code-input">
-      <button id="verifyCodeBtn" class="verify-btn">Tasdiqlash</button>
-      <div id="resultMsg" class="result-message"></div>
-      <div id="qarzQoshishDiv" class="hidden">
-        <button id="qarzQoshishBtn" class="add-debt-btn">Qo'shish</button>
+      <h1 class="verification-title">Xabarlar</h1>
+      
+      <!-- Pending Requests Section -->
+      <div id="pendingRequestsSection" class="mb-6">
+        <h2 class="text-white text-lg font-semibold mb-4 text-center">Kutilayotgan so'rovlar</h2>
+        <div id="pendingRequestsList" class="space-y-3">
+          <!-- Requests will be loaded here -->
+        </div>
       </div>
+      
+
+      
+
+      
       <button id="goDashboardBtn" class="dashboard-btn">Dashboardga qaytish</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     // Firebase config (from dashboard.js)
@@ -608,108 +615,167 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const codeInput = document.getElementById('codeInput');
-    const verifyCodeBtn = document.getElementById('verifyCodeBtn');
     const resultMsg = document.getElementById('resultMsg');
-    const qarzQoshishDiv = document.getElementById('qarzQoshishDiv');
-    const qarzQoshishBtn = document.getElementById('qarzQoshishBtn');
-    let foundMessage = null;
+    const pendingRequestsList = document.getElementById('pendingRequestsList');
 
-    verifyCodeBtn.onclick = async () => {
-      const code = codeInput.value.trim();
-      resultMsg.textContent = '';
-      resultMsg.className = 'result-message';
-      qarzQoshishDiv.classList.add('hidden');
-      if (!code || code.length !== 6) {
-        resultMsg.textContent = 'Kod 6 xonali bo\'lishi kerak!';
-        resultMsg.classList.add('error');
-        return;
-      }
-      // Kodni Firestore'dan tekshirish
-      const q = query(collection(db, 'messages'), where('code', '==', code));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        // Kod topildi
-        foundMessage = snap.docs[0];
-        const data = foundMessage.data();
-        if (data.status === 'used') {
-          resultMsg.textContent = 'Bu kod allaqachon ishlatilgan.';
-          resultMsg.classList.add('error');
-          return;
-        }
-        resultMsg.textContent = 'Kod to\'g\'ri! Endi qarz qo\'shishingiz mumkin.';
-        resultMsg.classList.add('success');
-        qarzQoshishDiv.classList.remove('hidden');
-      } else {
-        resultMsg.textContent = 'Kod noto\'g\'ri yoki topilmadi!';
-        resultMsg.classList.add('error');
-      }
-    };
-
-    qarzQoshishBtn.onclick = async () => {
-      if (!foundMessage) return;
-      await updateDoc(doc(db, 'messages', foundMessage.id), { status: 'used' });
-
-      // Kodni yuborgan userni topamiz
-      const toUserId = foundMessage.data().to;
-
-      // 1. Avval document id bo'yicha qidiramiz
-      let userSnap = await getDoc(doc(db, 'users', toUserId));
-      let userData = null;
-      let userDocId = toUserId;
-
-      // 2. Agar topilmasa, sidebarUserCode bo'yicha qidiramiz
-      if (!userSnap.exists()) {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        let found = null;
-        usersSnap.forEach(docu => {
-          if (docu.data().sidebarUserCode === toUserId) {
-            found = docu;
-          }
-        });
-        if (found) {
-          userSnap = found;
-          userData = found.data();
-          userDocId = found.id;
-        }
-      } else {
-        userData = userSnap.data();
-      }
-
-      if (!userData) {
-        alert('Kod yuborgan foydalanuvchi topilmadi!');
-        return;
-      }
-      const userObj = {
-        id: userData.sidebarUserCode || userDocId,
-        name: userData.name || "Noma'lum",
-        number: userData.sidebarNumber || ""
-      };
-
-      // Sizning useringizni aniqlash (hozir login bo'lgan user)
+    // Load pending requests
+    async function loadPendingRequests() {
       const auth = getAuth();
       const currentUser = auth.currentUser;
-      if (!currentUser) {
-        alert('Avval tizimga kiring!');
-        return;
-      }
+      if (!currentUser) return;
 
-      // addedSearchUsers massiviga qo'shamiz va Firebase-ga saqlaymiz
-      const myUserRef = doc(db, 'users', currentUser.uid);
-      const myUserSnap = await getDoc(myUserRef);
-      let addedSearchUsers = [];
-      if (myUserSnap.exists() && Array.isArray(myUserSnap.data().addedSearchUsers)) {
-        addedSearchUsers = myUserSnap.data().addedSearchUsers;
-      }
-      // Dublikatsiyani oldini olish
-      if (!addedSearchUsers.some(u => u.id === userObj.id)) {
-        addedSearchUsers.push(userObj);
-        await updateDoc(myUserRef, { addedSearchUsers });
-      }
+      // Get current user's ID (sidebarUserCode or uid)
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      const currentUserId = userData.sidebarUserCode || currentUser.uid;
 
-      alert('Qarzdor muvaffaqiyatli qo\'shildi! Dashboardga qayting.');
-      // window.location.href = 'dashboard.html';
+      // Query for pending requests sent to this user
+      const q = query(
+        collection(db, 'messages'), 
+        where('to', '==', currentUserId),
+        where('status', '==', 'pending'),
+        where('requestType', '==', 'debt_request')
+      );
+      
+      const snap = await getDocs(q);
+      const requests = [];
+      
+      snap.forEach(doc => {
+        requests.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Sort by creation date (newest first)
+      requests.sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
+
+      // Render requests
+      if (requests.length === 0) {
+        pendingRequestsList.innerHTML = '<div class="text-center text-white/60 text-sm">Kutilayotgan so\'rovlar yo\'q</div>';
+      } else {
+        pendingRequestsList.innerHTML = requests.map(request => `
+          <div class="glass-card rounded-xl p-4 border border-white/20">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                  ${request.fromName ? request.fromName.slice(0, 2).toUpperCase() : 'NA'}
+                </div>
+                <div>
+                  <div class="text-white font-semibold">${request.fromName || 'Noma\'lum'}</div>
+                  <div class="text-white/60 text-sm">ID: ${request.fromId}</div>
+                  ${request.fromNumber ? `<div class="text-white/60 text-sm">Tel: ${request.fromNumber}</div>` : ''}
+                </div>
+              </div>
+              <div class="text-white/40 text-xs">
+                ${request.createdAt?.toDate ? request.createdAt.toDate().toLocaleString('uz-UZ') : ''}
+              </div>
+            </div>
+            <div class="text-white/80 text-sm mb-4">
+              Sizga qarz qo'shish uchun so'rov yubordi
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="approveRequest('${request.id}', '${request.fromId}', '${request.fromName}', '${request.fromNumber}')" 
+                      class="flex-1 glass-button text-white px-4 py-2 rounded-lg font-semibold">
+                Ruxsat berish
+              </button>
+              <button onclick="rejectRequest('${request.id}')" 
+                      class="flex-1 glass-button red text-white px-4 py-2 rounded-lg font-semibold">
+                Rad etish
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Approve request function
+    window.approveRequest = async (requestId, fromId, fromName, fromNumber) => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      try {
+        // Update request status to approved
+        await updateDoc(doc(db, 'messages', requestId), { 
+          status: 'approved',
+          approvedAt: Timestamp.now()
+        });
+
+        // Add the user to current user's addedSearchUsers
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        let addedSearchUsers = [];
+        if (userSnap.exists() && Array.isArray(userSnap.data().addedSearchUsers)) {
+          addedSearchUsers = userSnap.data().addedSearchUsers;
+        }
+
+        const userObj = {
+          id: fromId,
+          name: fromName || 'Noma\'lum',
+          number: fromNumber || ''
+        };
+
+        // Check for duplicates
+        if (!addedSearchUsers.some(u => u.id === userObj.id)) {
+          addedSearchUsers.push(userObj);
+          await updateDoc(userRef, { addedSearchUsers });
+        }
+
+        // Reload requests
+        await loadPendingRequests();
+        
+        // Show success message
+        resultMsg.textContent = 'So\'rov tasdiqlandi! Qarzdor qo\'shildi.';
+        resultMsg.classList.add('success');
+        resultMsg.classList.remove('error');
+        
+      } catch (error) {
+        console.error('Error approving request:', error);
+        resultMsg.textContent = 'Xatolik yuz berdi!';
+        resultMsg.classList.add('error');
+        resultMsg.classList.remove('success');
+      }
     };
+
+    // Reject request function
+    window.rejectRequest = async (requestId) => {
+      try {
+        // Update request status to rejected
+        await updateDoc(doc(db, 'messages', requestId), { 
+          status: 'rejected',
+          rejectedAt: Timestamp.now()
+        });
+
+        // Reload requests
+        await loadPendingRequests();
+        
+        // Show success message
+        resultMsg.textContent = 'So\'rov rad etildi!';
+        resultMsg.classList.add('success');
+        resultMsg.classList.remove('error');
+        
+      } catch (error) {
+        console.error('Error rejecting request:', error);
+        resultMsg.textContent = 'Xatolik yuz berdi!';
+        resultMsg.classList.add('error');
+        resultMsg.classList.remove('success');
+      }
+    };
+
+    // Load requests on page load and set up real-time updates
+    async function initializeRequests() {
+      await loadPendingRequests();
+      
+      // Set up real-time listener for new requests
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        // Reload requests every 5 seconds for real-time updates
+        setInterval(loadPendingRequests, 5000);
+      }
+    }
+
+    // Initialize when page loads
+    initializeRequests();
   </script>
 
   <script>
