@@ -312,9 +312,8 @@ function renderDebtors(debtors) {
 
     const card = document.createElement("div");
     card.className = `
-      rounded-2xl p-6 shadow-2xl border
-      ${isDark ? 'border-[#374151] bg-[#232c39]/90' : 'border-white/40 bg-white/60'}
-      backdrop-blur-2xl flex flex-col justify-between gap-6 relative z-0
+      glass-card rounded-2xl p-6 shadow-2xl
+      flex flex-col justify-between gap-6 relative z-0
       transition hover:scale-[1.025] hover:shadow-2xl mb-4
       text-gray-500
     `.replace(/\s+/g, ' ');
@@ -354,8 +353,8 @@ function renderDebtors(debtors) {
       </div>
     </div>
     <div class="flex flex-col gap-2 w-full mt-4 items-stretch">
-      <button class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-id="${d.id}">Batafsil</button>
-      <button class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-del="${d.id}">O‘chirish</button>
+      <button class="glass-button text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-id="${d.id}">Batafsil</button>
+      <button class="glass-button red text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-del="${d.id}">O'chirish</button>
     </div>
   </div>
 `;
@@ -396,7 +395,6 @@ document.getElementById("closeModal").onclick = () => debtorModal.classList.add(
 
 function openDebtorModal(debtor) {
   debtorModal.classList.remove("hidden");
-  let addHistory = "", subHistory = "";
   let totalAdd = 0, totalSub = 0;
 
   // Faqat o'zining yozganlarini ko'rsatish
@@ -405,28 +403,47 @@ function openDebtorModal(debtor) {
     h => (h.authorId ? h.authorId === currentUserId : debtor.userId === currentUserId)
   );
 
-  filteredHistory.forEach((h) => {
+  // Vaqt bo'yicha taxlash (eng yangidan eng eskiga)
+  const sortedHistory = filteredHistory.sort((a, b) => {
+    const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+    const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+    return dateB - dateA; // Eng yangi birinchi
+  });
+
+  // Barcha transaksiyalarni birlashtirish
+  let allTransactions = "";
+
+  sortedHistory.forEach((h) => {
     const date = h.date?.toDate ? h.date.toDate() : new Date();
     const time = date.toLocaleString("uz-UZ");
 
     if (h.type === "add") {
-      addHistory += `
+      allTransactions += `
         <div class="bg-green-100 dark:bg-green-900 rounded p-2 mb-2">
-          +${h.amount} so‘m 
-          <span class="text-xs text-gray-500 ml-2">
-            (${h.count || 1} x ${h.price || h.amount} so‘m, ${h.product || debtor.product || ""})
-          </span>
-          <span class="text-xs text-gray-400 ml-2">${time}</span>
-          <div class="text-xs text-gray-400">${h.note || ""}</div>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <span class="text-green-600 dark:text-green-400 font-semibold">+${h.amount} so'm</span>
+              <span class="text-xs text-gray-500 ml-2">
+                (${h.count || 1} x ${h.price || h.amount} so'm, ${h.product || debtor.product || ""})
+              </span>
+            </div>
+            <span class="text-xs text-gray-400">${time}</span>
+          </div>
+          ${h.note ? `<div class="text-xs text-gray-400 mt-1">${h.note}</div>` : ''}
         </div>`;
       totalAdd += h.amount;
     }
 
     if (h.type === "sub") {
-      subHistory += `
+      allTransactions += `
         <div class="bg-red-100 dark:bg-red-900 rounded p-2 mb-2">
-          -${h.amount} so‘m 
-          <span class="text-xs text-gray-400 ml-2">${time}</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <span class="text-red-600 dark:text-red-400 font-semibold">-${h.amount} so'm</span>
+            </div>
+            <span class="text-xs text-gray-400">${time}</span>
+          </div>
+          ${h.note ? `<div class="text-xs text-gray-400 mt-1">${h.note}</div>` : ''}
         </div>`;
       totalSub += h.amount;
     }
@@ -438,10 +455,10 @@ function openDebtorModal(debtor) {
       <div class="font-bold text-2xl mb-1 flex items-center gap-2 text-gray-900 dark:text-white">
         ${debtor.name}
       </div>
-      <div class="text-sm text-gray-400 mb-2">${debtor.product ? `${debtor.product} (${debtor.count || 1} x ${debtor.price || 0} so‘m)` : ""}</div>
+      <div class="text-sm text-gray-400 mb-2">${debtor.product ? `${debtor.product} (${debtor.count || 1} x ${debtor.price || 0} so'm)` : ""}</div>
       <div class="text-xs text-gray-400 mb-2">${debtor.note || ""}</div>
       <div class="mb-4 text-base">
-        Umumiy qarz: <span class="font-bold text-blue-700 dark:text-blue-300">${totalAdd - totalSub} so‘m</span>
+        Umumiy qarz: <span class="font-bold text-blue-700 dark:text-blue-300">${totalAdd - totalSub} so'm</span>
       </div>
       <form id="addDebtForm" class="flex flex-col gap-2 mb-3">
         <div class="grid grid-cols-1 gap-2">
@@ -450,10 +467,10 @@ function openDebtorModal(debtor) {
           <input type="number" min="1" placeholder="Mahsulot narxi" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" required autocomplete="off">
           <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
         </div>
-        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-semibold shadow transition">Qo‘shish</button>
+        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded font-semibold shadow transition">Qo'shish</button>
       </form>
       <form id="subDebtForm" class="flex flex-col gap-2 mb-3">
-        <input type="number" min="1" placeholder="Qarz ayirish (so‘m)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100 transition" required autocomplete="off">
+        <input type="number" min="1" placeholder="Qarz ayirish (so'm)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100 transition" required autocomplete="off">
         <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-red-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
         <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded font-semibold shadow transition">Ayirish</button>
       </form>
@@ -465,34 +482,28 @@ function openDebtorModal(debtor) {
     </div>
     <div class="flex-1 flex flex-col gap-4">
       <div>
-        <div class="font-bold mb-2 text-gray-900 dark:text-white">Qo‘shilganlar</div>
-        <div class="space-y-2">
-          ${addHistory || '<div class="text-gray-400">Yo‘q</div>'}
-        </div>
-      </div>
-      <div>
-        <div class="font-bold mb-2 mt-2 text-gray-900 dark:text-white">Ayirilganlar</div>
-        <div class="space-y-2">
-          ${subHistory || '<div class="text-gray-400">Yo‘q</div>'}
+        <div class="font-bold mb-2 text-gray-900 dark:text-white">Transaksiyalar tarixi</div>
+        <div class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+          ${allTransactions || '<div class="text-gray-400">Transaksiyalar yo\'q</div>'}
         </div>
       </div>
     </div>
   </div>
   <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
     <div class="bg-white/80 dark:bg-gray-900/60 rounded-lg p-4 flex flex-col items-center border border-gray-200 dark:border-gray-700 shadow">
-      <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Jami qo‘shilgan</div>
+      <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Jami qo'shilgan</div>
       <div class="text-2xl font-bold text-green-600 dark:text-green-400">${totalAdd}</div>
-      <div class="text-green-600 dark:text-green-400 font-semibold">so‘m</div>
+      <div class="text-green-600 dark:text-green-400 font-semibold">so'm</div>
     </div>
     <div class="bg-white/80 dark:bg-gray-900/60 rounded-lg p-4 flex flex-col items-center border border-gray-200 dark:border-gray-700 shadow">
       <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Jami ayirilgan</div>
       <div class="text-2xl font-bold text-red-500 dark:text-red-400">${totalSub}</div>
-      <div class="text-red-500 dark:text-red-400 font-semibold">so‘m</div>
+      <div class="text-red-500 dark:text-red-400 font-semibold">so'm</div>
     </div>
     <div class="bg-white/80 dark:bg-gray-900/60 rounded-lg p-4 flex flex-col items-center border border-gray-200 dark:border-gray-700 shadow">
       <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Qarzdorlik</div>
       <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">${totalAdd - totalSub}</div>
-      <div class="text-blue-600 dark:text-blue-400 font-semibold">so‘m</div>
+      <div class="text-blue-600 dark:text-blue-400 font-semibold">so'm</div>
     </div>
   </div>
 `;
@@ -500,7 +511,7 @@ function openDebtorModal(debtor) {
   // Add debt form handler
   modalContent.querySelector("#addDebtForm").onsubmit = async (e) => {
     e.preventDefault();
-    if (!(await showConfirmDiv("Qo‘shaveraymi?"))) return;
+    if (!(await showConfirmDiv("Qo'shaveraymi?"))) return;
     
     Array.from(e.target.elements).forEach(el => {
       if (el.tagName === "INPUT" || el.tagName === "BUTTON") el.style.display = "none";
@@ -539,7 +550,7 @@ function openDebtorModal(debtor) {
         date: Timestamp.now(),
         authorId: auth.currentUser.uid
       }),
-      // Jami qo‘shilganni yangilash
+      // Jami qo'shilganni yangilash
       totalAdded: (debtor.totalAdded || 0) + amount
     });
     
@@ -602,13 +613,13 @@ function openDebtorModal(debtor) {
           if (docSnap.exists() && typeof docSnap.data().lastRating === "number") {
             prevRating = docSnap.data().lastRating;
           }
-          // O‘rtacha ballni hisoblaymiz
+          // O'rtacha ballni hisoblaymiz
           let avgRating = prevRating ? Math.round(((prevRating + rating) / 2) * 10) / 10 : rating;
           await updateDoc(ref, {
             history: [],
             totalAdded: 0,
             totalSubtracted: 0,
-            lastRating: avgRating // O‘rtacha ballni saqlash
+            lastRating: avgRating // O'rtacha ballni saqlash
           });
           const updated = (await getDocs(collection(db, "debtors"))).docs
             .find((docu) => docu.id === debtor.id)
@@ -665,28 +676,29 @@ async function showSidebarUser() {
     }
   }
 
-  // Sidebar’da ism, raqam, ID va rasmni chiqarish
-  let sidebarUserDiv = document.getElementById("sidebarUserInfo");
-  if (!sidebarUserDiv) {
-    sidebarUserDiv = document.createElement("div");
-    sidebarUserDiv.id = "sidebarUserInfo";
-    sidebarUserDiv.className = "flex items-center gap-3 mb-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 shadow";
-    // logoutBtn tugmasidan oldin joylashtiramiz
-    const logoutBtn = document.getElementById("logoutBtn");
-    logoutBtn.parentNode.insertBefore(sidebarUserDiv, logoutBtn);
+  // Update sidebar user information
+  const userNameElement = document.getElementById("userName");
+  const userIdElement = document.getElementById("userId");
+  const userCodeElement = document.getElementById("userCode");
+  const userInitialsElement = document.getElementById("userInitials");
+  
+  if (userNameElement) {
+    userNameElement.textContent = user.displayName || "Foydalanuvchi";
   }
-  // User photo
-  const photoURL = user.photoURL || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.displayName || "Foydalanuvchi") + "&background=0D8ABC&color=fff&size=64";
-  sidebarUserDiv.innerHTML = `
-    <img src="${photoURL}" alt="User" class="w-12 h-12 rounded-full border-2 border-blue-400 shadow" />
-    <div>
-      <div class="font-bold text-lg flex items-center gap-2">
-        <span>${user.displayName || "Foydalanuvchi"}</span>
-        <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
-      </div>
-      <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
-    </div>
-  `;
+  
+  if (userIdElement) {
+    userIdElement.textContent = `#${sidebarNumber}`;
+  }
+  
+  if (userCodeElement) {
+    userCodeElement.textContent = sidebarUserCode;
+  }
+  
+  if (userInitialsElement) {
+    const name = user.displayName || "Foydalanuvchi";
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    userInitialsElement.textContent = initials;
+  }
 }
 
 // Custom confirmation dialog
