@@ -2,450 +2,200 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>E-Temir Daftar - Login</title>
+  <title>Login/Register</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="./dulaloq.png" type="image/x-icon">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
+    html, body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    
-    html, body {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      position: relative;
+      background: #181a2a;
+      font-family: 'Segoe UI', Arial, sans-serif;
     }
-
-    /* Animated background */
-    .bg-animation {
+    #particles-canvas {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
       z-index: 0;
-      background: 
-        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
-      animation: bgShift 20s ease-in-out infinite;
+      display: block;
     }
-
-    @keyframes bgShift {
-      0%, 100% { transform: scale(1) rotate(0deg); }
-      50% { transform: scale(1.1) rotate(1deg); }
-    }
-
-    /* Floating particles */
-    .particles {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      pointer-events: none;
-    }
-
-    .particle {
-      position: absolute;
-      width: 4px;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.6);
-      border-radius: 50%;
-      animation: float 6s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
-      50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
-    }
-
     .center-content {
       position: fixed;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: 10;
+      z-index: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
     }
-
-    .form-container {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 24px;
-      padding: 3rem 2.5rem;
-      min-width: 380px;
-      max-width: 420px;
+    .form-box {
+      background: rgba(30, 32, 60, 0.93);
+      padding: 2.2rem 2.2rem 1.7rem 2.2rem;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px 0 #0005;
+      min-width: 320px;
+      max-width: 350px;
       width: 100%;
-      box-shadow: 
-        0 25px 50px rgba(0, 0, 0, 0.15),
-        0 0 0 1px rgba(255, 255, 255, 0.1);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: box-shadow 0.3s, transform 0.3s;
       position: relative;
-      overflow: hidden;
     }
-
-    .form-container::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    }
-
-    .form-container:hover {
-      transform: translateY(-5px);
-      box-shadow: 
-        0 35px 60px rgba(0, 0, 0, 0.2),
-        0 0 0 1px rgba(255, 255, 255, 0.15);
-    }
-
     .form-title {
       color: #fff;
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 2rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
       text-align: center;
-      letter-spacing: -0.5px;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      letter-spacing: 1px;
     }
-
-    .form-group {
-      margin-bottom: 1.5rem;
-      position: relative;
-    }
-
-    .form-input {
-      width: 100%;
-      padding: 1rem 1.25rem;
-      border-radius: 12px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
+    .form-box input {
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      border: none;
+      background: #fff;
+      color: #222;
       font-size: 1rem;
-      font-weight: 500;
+      margin-bottom: 0.5rem;
       outline: none;
-      transition: all 0.3s ease;
-      backdrop-filter: blur(10px);
+      transition: box-shadow 0.2s;
+      box-shadow: 0 1px 4px #0001;
     }
-
-    .form-input::placeholder {
-      color: rgba(255, 255, 255, 0.7);
-      font-weight: 400;
+    .form-box input:focus {
+      box-shadow: 0 2px 8px #8b5cf655;
     }
-
-    .form-input:focus {
-      border-color: rgba(255, 255, 255, 0.5);
-      background: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
-      transform: translateY(-2px);
-    }
-
-    .password-wrapper {
-      position: relative;
-    }
-
-    .password-wrapper .form-input {
-      padding-right: 3rem;
-    }
-
-    .toggle-password {
-      position: absolute;
-      right: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
+    .form-box button[type="submit"] {
+      padding: 0.7rem 0;
+      border-radius: 6px;
       border: none;
-      color: rgba(255, 255, 255, 0.7);
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .toggle-password:hover {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .toggle-password svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .submit-btn {
-      width: 100%;
-      padding: 1rem;
-      border-radius: 12px;
-      border: none;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%);
       color: #fff;
       font-size: 1.1rem;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 1rem;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .submit-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
+      margin-top: 0.5rem;
+      margin-bottom: 0.2rem;
       width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s ease;
+      box-shadow: 0 2px 8px #8b5cf633;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
     }
-
-    .submit-btn:hover::before {
-      left: 100%;
+    .form-box button[type="submit"]:hover {
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+      box-shadow: 0 4px 16px #8b5cf655;
+      transform: translateY(-2px) scale(1.03);
     }
-
-    .submit-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-    }
-
-    .submit-btn:active {
-      transform: translateY(0);
-    }
-
     .switch-btn {
       background: none;
-      color: rgba(255, 255, 255, 0.8);
+      color: #8b5cf6;
       border: none;
       font-size: 1rem;
-      font-weight: 500;
       cursor: pointer;
-      margin-top: 1.5rem;
+      margin-top: 0.5rem;
       text-decoration: underline;
       width: 100%;
-      transition: all 0.3s ease;
-      padding: 0.5rem;
-      border-radius: 8px;
-    }
-
-    .switch-btn:hover {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.1);
-      text-decoration: none;
-    }
-
-    .error-msg {
-      color: #ff6b6b;
-      text-align: center;
-      font-size: 0.9rem;
-      font-weight: 500;
-      min-height: 1.2em;
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background: rgba(255, 107, 107, 0.1);
-      border-radius: 8px;
-      border: 1px solid rgba(255, 107, 107, 0.2);
-      backdrop-filter: blur(10px);
-    }
-
-    .form-box {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    /* Logo/Brand */
-    .brand {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-
-    .brand-logo {
-      width: 60px;
-      height: 60px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1rem;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #fff;
-      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-    }
-
-    .brand-text {
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 0.9rem;
+      transition: color 0.2s;
       font-weight: 500;
       letter-spacing: 0.5px;
     }
-
-    /* Responsive */
-    @media (max-width: 480px) {
-      .form-container {
+    .switch-btn:hover {
+      color: #6366f1;
+      text-decoration: none;
+    }
+    .error-msg {
+      color: #ff6b6b;
+      text-align: center;
+      font-size: 1rem;
+      min-height: 1.2em;
+      margin-bottom: 0.2rem;
+    }
+    @media (max-width: 500px) {
+      .form-box {
         min-width: 0;
-        max-width: 100%;
-        padding: 2rem 1.5rem;
-        margin: 1rem;
+        max-width: 98vw;
+        padding: 1.2rem 0.5rem 1rem 0.5rem;
       }
-      
       .form-title {
-        font-size: 1.75rem;
-      }
-      
-      .brand-logo {
-        width: 50px;
-        height: 50px;
-        font-size: 1.25rem;
+        font-size: 1.2rem;
       }
     }
-
-    /* Loading animation */
-    .loading {
+    .password-wrapper {
       position: relative;
-      pointer-events: none;
+      width: 100%;
+      display: flex;
+      align-items: center;
     }
-
-    .loading::after {
-      content: '';
+    .password-wrapper input[type="password"],
+    .password-wrapper input[type="text"] {
+      width: 100%;
+      padding-right: 2.5em;
+      box-sizing: border-box;
+      margin-bottom: 0;
+    }
+    .toggle-password {
       position: absolute;
+      right: 0.7em;
       top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      margin: -10px 0 0 -10px;
-      border: 2px solid transparent;
-      border-top: 2px solid #fff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 1.4em;
+      color: #8b5cf6;
+      display: flex;
+      align-items: center;
+      background: transparent;
+      border: none;
+      padding: 0;
+      z-index: 2;
     }
   </style>
 </head>
 <body>
-  <div class="bg-animation"></div>
-  
-  <div class="particles" id="particles"></div>
-  
+  <canvas id="particles-canvas"></canvas>
   <div class="center-content">
     <!-- Login form -->
-    <form class="form-container form-box" id="loginForm" autocomplete="off">
-      <div class="brand">
-        <div class="brand-logo">💰</div>
-        <div class="brand-text">QarzUz</div>
+    <form class="form-box" id="loginForm" autocomplete="off">
+      <div class="form-title">Login</div>
+      <input type="email" id="loginEmail" placeholder="Email" required autocomplete="username" />
+      <div class="password-wrapper">
+        <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" />
+        <span class="toggle-password" id="toggleLoginPassword">
+          <svg id="loginEyeOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/></svg>
+          <svg id="loginEyeClosed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/><path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/></svg>
+        </span>
       </div>
-      
-      <div class="form-title">Xush kelibsiz</div>
-      
-      <div class="form-group">
-        <input type="email" id="loginEmail" class="form-input" placeholder="Email manzilingiz" required autocomplete="username" />
-      </div>
-      
-      <div class="form-group">
-        <div class="password-wrapper">
-          <input type="password" id="loginPassword" class="form-input" placeholder="Parolingiz" required autocomplete="current-password" />
-          <button type="button" class="toggle-password" id="toggleLoginPassword">
-            <svg id="loginEyeOpen" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
-            </svg>
-            <svg id="loginEyeClosed" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/>
-              <path d="M1 1l22 22"/>
-              <path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/>
-              <path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      
-      <button type="submit" class="submit-btn">Kirish</button>
-      <button type="button" class="switch-btn" id="showRegister">Hisob yaratish</button>
+      <button type="submit">Login</button>
+      <button type="button" class="switch-btn" id="showRegister">Create an account</button>
       <div class="error-msg" id="loginError"></div>
     </form>
-
     <!-- Register form -->
-    <form class="form-container form-box" id="registerForm" autocomplete="off" style="display:none;">
-      <div class="brand">
-        <div class="brand-logo">💰</div>
-        <div class="brand-text">QarzUz</div>
+    <form class="form-box" id="registerForm" autocomplete="off" style="display:none;">
+      <div class="form-title">Register</div>
+      <input type="text" id="registerName" placeholder="Name" required autocomplete="username" />
+      <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email" />
+      <div class="password-wrapper">
+        <input type="password" id="registerPassword" placeholder="Password" required autocomplete="new-password" />
+        <span class="toggle-password" id="toggleRegisterPassword">
+          <svg id="registerEyeOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/></svg>
+          <svg id="registerEyeClosed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/><path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/></svg>
+        </span>
       </div>
-      
-      <div class="form-title">Hisob yarating</div>
-      
-      <div class="form-group">
-        <input type="text" id="registerName" class="form-input" placeholder="To'liq ismingiz" required autocomplete="username" />
+      <div class="password-wrapper">
+        <input type="password" id="registerPasswordRepeat" placeholder="Repeat password" required autocomplete="new-password" />
+        <span class="toggle-password" id="toggleRegisterPasswordRepeat">
+          <svg id="registerRepeatEyeOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/></svg>
+          <svg id="registerRepeatEyeClosed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/><path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/></svg>
+        </span>
       </div>
-      
-      <div class="form-group">
-        <input type="email" id="registerEmail" class="form-input" placeholder="Email manzilingiz" required autocomplete="email" />
-      </div>
-      
-      <div class="form-group">
-        <div class="password-wrapper">
-          <input type="password" id="registerPassword" class="form-input" placeholder="Parol" required autocomplete="new-password" />
-          <button type="button" class="toggle-password" id="toggleRegisterPassword">
-            <svg id="registerEyeOpen" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
-            </svg>
-            <svg id="registerEyeClosed" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/>
-              <path d="M1 1l22 22"/>
-              <path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/>
-              <path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <div class="password-wrapper">
-          <input type="password" id="registerPasswordRepeat" class="form-input" placeholder="Parolni takrorlang" required autocomplete="new-password" />
-          <button type="button" class="toggle-password" id="toggleRegisterPasswordRepeat">
-            <svg id="registerRepeatEyeOpen" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
-            </svg>
-            <svg id="registerRepeatEyeClosed" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
-              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/>
-              <path d="M1 1l22 22"/>
-              <path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/>
-              <path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      
-      <button type="submit" class="submit-btn">Ro'yxatdan o'tish</button>
-      <button type="button" class="switch-btn" id="showLogin">Hisobingiz bormi?</button>
+      <button type="submit">Register</button>
+      <button type="button" class="switch-btn" id="showLogin">Already have an account?</button>
       <div class="error-msg" id="registerError"></div>
     </form>
   </div>
-
   <!-- Firebase va auth  -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
@@ -464,6 +214,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
+
     const loginForm = document.getElementById("loginForm");
     const registerForm = document.getElementById("registerForm");
     const showRegister = document.getElementById("showRegister");
@@ -471,13 +222,13 @@
     const loginError = document.getElementById("loginError");
     const registerError = document.getElementById("registerError");
 
+ 
     showRegister.onclick = () => {
       loginForm.style.display = "none";
       registerForm.style.display = "flex";
       loginError.innerText = "";
       registerError.innerText = "";
     };
-    
     showLogin.onclick = () => {
       registerForm.style.display = "none";
       loginForm.style.display = "flex";
@@ -489,69 +240,45 @@
     loginForm.onsubmit = (e) => {
       e.preventDefault();
       loginError.innerText = "";
-      const submitBtn = loginForm.querySelector('.submit-btn');
-      submitBtn.classList.add('loading');
-      submitBtn.textContent = '';
-      
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
-      
       signInWithEmailAndPassword(auth, email, password)
         .then(() => window.location.href = "bosh-sahifa.html")
-        .catch(err => {
-          loginError.innerText = err.message;
-          submitBtn.classList.remove('loading');
-          submitBtn.textContent = 'Kirish';
-        });
+        .catch(err => loginError.innerText = err.message);
     };
 
     // Register
     registerForm.onsubmit = (e) => {
       e.preventDefault();
       registerError.innerText = "";
-      const submitBtn = registerForm.querySelector('.submit-btn');
-      submitBtn.classList.add('loading');
-      submitBtn.textContent = '';
-      
       const name = document.getElementById("registerName").value;
       const email = document.getElementById("registerEmail").value;
       const password = document.getElementById("registerPassword").value;
       const passwordRepeat = document.getElementById("registerPasswordRepeat").value;
-      
       if (!name) {
-        registerError.innerText = "Ism kiritilishi shart!";
-        submitBtn.classList.remove('loading');
-        submitBtn.textContent = 'Ro\'yxatdan o\'tish';
+        registerError.innerText = "Name is required!";
         return;
       }
-      
       if (password !== passwordRepeat) {
-        registerError.innerText = "Parollar bir xil bo'lishi kerak!";
-        submitBtn.classList.remove('loading');
-        submitBtn.textContent = 'Ro\'yxatdan o\'tish';
+        registerError.innerText = "Parollar bir xil bo‘lishi kerak!";
         return;
       }
-      
       createUserWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
+          // Ismni Firebase profiliga yozish
           return updateProfile(userCredential.user, { displayName: name });
         })
         .then(() => window.location.href = "bosh-sahifa.html")
-        .catch(err => {
-          registerError.innerText = err.message;
-          submitBtn.classList.remove('loading');
-          submitBtn.textContent = 'Ro\'yxatdan o\'tish';
-        });
+        .catch(err => registerError.innerText = err.message);
     };
 
-    // Parolni ko'rsatish/yashirish
+    // Parolni ko‘rsatish/yashirish (SVG icon bilan)
     function setupPasswordToggle(inputId, toggleId, eyeOpenId, eyeClosedId) {
       const input = document.getElementById(inputId);
       const toggle = document.getElementById(toggleId);
       const eyeOpen = document.getElementById(eyeOpenId);
       const eyeClosed = document.getElementById(eyeClosedId);
       let visible = false;
-      
       toggle.onclick = () => {
         visible = !visible;
         input.type = visible ? "text" : "password";
@@ -559,25 +286,59 @@
         eyeClosed.style.display = visible ? "inline" : "none";
       };
     }
-    
     setupPasswordToggle("loginPassword", "toggleLoginPassword", "loginEyeOpen", "loginEyeClosed");
     setupPasswordToggle("registerPassword", "toggleRegisterPassword", "registerEyeOpen", "registerEyeClosed");
     setupPasswordToggle("registerPasswordRepeat", "toggleRegisterPasswordRepeat", "registerRepeatEyeOpen", "registerRepeatEyeClosed");
   </script>
 
   <script>
-    // Create floating particles
-    const particlesContainer = document.getElementById('particles');
-    const particleCount = 50;
 
-    for (let i = 0; i < particleCount; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'particle';
-      particle.style.left = Math.random() * 100 + '%';
-      particle.style.animationDelay = Math.random() * 6 + 's';
-      particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
-      particlesContainer.appendChild(particle);
+    const canvas = document.getElementById('particles-canvas');
+    const ctx = canvas.getContext('2d');
+    let w = window.innerWidth;
+    let h = window.innerHeight;
+    canvas.width = w;
+    canvas.height = h;
+
+    const particles = [];
+    const PARTICLE_COUNT = 350;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const radius = 120 + Math.random() * 220;
+      particles.push({
+        x: w/2 + Math.cos(angle) * radius,
+        y: h/2 + Math.sin(angle) * radius,
+        r: Math.random() * 3 + 1.5,
+        dx: (Math.random() - 0.5) * 0.25,
+        dy: (Math.random() - 0.5) * 0.25,
+        color: `rgba(139,92,246,${Math.random() * 0.7 + 0.3})`
+      });
     }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, w, h);
+      for (let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+ 
+        p.x += p.dx;
+
+        if (p.x < 0 || p.x > w) p.dx *= -1;
+        if (p.y < 0 || p.y > h) p.dy *= -1;
+      }
+      requestAnimationFrame(drawParticles);
+    }
+    drawParticles();
+
+
+    window.addEventListener('resize', () => {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w;
+      canvas.height = h;
+    });
   </script>
 </body>
 </html>

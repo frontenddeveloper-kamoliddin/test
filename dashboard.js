@@ -16,6 +16,9 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  query,
+  where,
+  onSnapshot,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase configuration
@@ -40,7 +43,16 @@ onAuthStateChanged(auth, (user) => {
   } else {
     showSidebarUser();
     loadDebtors();
-    loadAddedSearchUsers(); // <-- Qo‘shildi
+    loadAddedSearchUsers(); // <-- Qo'shildi
+    
+    // Check for pending permission requests and notifications
+    checkPendingPermissionRequests();
+    checkNotifications();
+    
+    // Set up real-time listener for permission requests
+    setupPermissionRequestListener();
+    setupNotificationListener();
+    setupPermissionUpdateListener();
   }
 });
 
@@ -216,7 +228,7 @@ async function getAddedSearchUsersTotals() {
   return { totalAllAdded, totalAllSub, totalAllDebt };
 }
 
-// 2. renderStats funksiyasini o‘zgartiring:
+// 2. renderStats funksiyasini o'zgartiring:
 async function renderStats(debtors) {
   let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
 
@@ -231,7 +243,7 @@ async function renderStats(debtors) {
     totalDebt += add - sub;
   });
 
-  // Search orqali qo‘shilgan userlar statistikasi ham qo‘shilsin
+  // Search orqali qo'shilgan userlar statistikasi ham qo'shilsin
   const { totalAllAdded, totalAllSub, totalAllDebt } = await getAddedSearchUsersTotals();
   totalAdded += totalAllAdded;
   totalSubtracted += totalAllSub;
@@ -250,9 +262,9 @@ async function renderStats(debtors) {
     }
   }
 
-  document.getElementById("totalAdded").innerText = totalAdded + " so‘m";
-  document.getElementById("totalSubtracted").innerText = totalSubtracted + " so‘m";
-  document.getElementById("totalDebt").innerText = totalDebt + " so‘m";
+  document.getElementById("totalAdded").innerText = totalAdded + " so'm";
+  document.getElementById("totalSubtracted").innerText = totalSubtracted + " so'm";
+  document.getElementById("totalDebt").innerText = totalDebt + " so'm";
 
   // Save to localStorage for bosh-sahifa.html
   localStorage.setItem("totals", JSON.stringify({ totalAdded, totalSubtracted, totalDebt }));
@@ -312,8 +324,9 @@ function renderDebtors(debtors) {
 
     const card = document.createElement("div");
     card.className = `
-      glass-card rounded-2xl p-6 shadow-2xl
-      flex flex-col justify-between gap-6 relative z-0
+      rounded-2xl p-6 shadow-2xl border
+      ${isDark ? 'border-[#374151] bg-[#232c39]/90' : 'border-white/40 bg-white/60'}
+      backdrop-blur-2xl flex flex-col justify-between gap-6 relative z-0
       transition hover:scale-[1.025] hover:shadow-2xl mb-4
       text-gray-500
     `.replace(/\s+/g, ' ');
@@ -339,22 +352,22 @@ function renderDebtors(debtors) {
       ${d.moveComment ? `<div class="text-xs ${isDark ? 'text-purple-400' : 'text-purple-600'} mt-1">Izoh: ${d.moveComment}</div>` : ""}
       <div class="mt-2 text-base leading-7 space-y-1">
         <div>
-          <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Umumiy qo‘shilgan:</span>
-          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd} so‘m</span>
+          <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Umumiy qo'shilgan:</span>
+          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd} so'm</span>
         </div>
         <div>
           <span class="font-semibold ${isDark ? 'text-gray-2300' : 'text-gray-700'}">Ayirilgan:</span>
-          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalSub} so‘m</span>
+          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalSub} so'm</span>
         </div>
         <div>
           <span class="font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}">Qolgan:</span>
-          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd - totalSub} so‘m</span>
+          <span class="${isDark ? 'text-white' : 'text-gray-900'} font-bold">${totalAdd - totalSub} so'm</span>
         </div>
       </div>
     </div>
     <div class="flex flex-col gap-2 w-full mt-4 items-stretch">
-      <button class="glass-button text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-id="${d.id}">Batafsil</button>
-      <button class="glass-button red text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-del="${d.id}">O'chirish</button>
+      <button class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-id="${d.id}">Batafsil</button>
+      <button class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-semibold shadow transition w-full" data-del="${d.id}">O'chirish</button>
     </div>
   </div>
 `;
@@ -371,9 +384,9 @@ function confirmDeleteDebtor(id, name) {
   div.className = 'modal-backdrop fixed inset-0 z-[100] flex items-center justify-center';
   div.innerHTML = `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 w-full max-w-xs text-center">
-      <div class="mb-4 font-bold">"${name}"ni o‘chirishni istaysizmi?</div>
+      <div class="mb-4 font-bold">"${name}"ni o'chirishni istaysizmi?</div>
       <div class="flex gap-2 justify-center">
-        <button id="delYes" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Ha, o‘chirish</button>
+        <button id="delYes" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">Ha, o'chirish</button>
         <button id="delNo" class="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded">Bekor qilish</button>
       </div>
     </div>
@@ -403,47 +416,38 @@ function openDebtorModal(debtor) {
     h => (h.authorId ? h.authorId === currentUserId : debtor.userId === currentUserId)
   );
 
-  // Vaqt bo'yicha taxlash (eng yangidan eng eskiga)
+  // Barcha harakatlarni vaqti bo'yicha saralash (eski vaqtlar avval, yangi vaqtlar keyin)
   const sortedHistory = filteredHistory.sort((a, b) => {
     const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
     const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
-    return dateB - dateA; // Eng yangi birinchi
+    return dateA - dateB;
   });
 
-  // Barcha transaksiyalarni birlashtirish
-  let allTransactions = "";
-
+  // Barcha harakatlarni bitta ro'yxatda birlashtirish
+  let combinedHistory = "";
   sortedHistory.forEach((h) => {
     const date = h.date?.toDate ? h.date.toDate() : new Date();
     const time = date.toLocaleString("uz-UZ");
 
     if (h.type === "add") {
-      allTransactions += `
+      combinedHistory += `
         <div class="bg-green-100 dark:bg-green-900 rounded p-2 mb-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <span class="text-green-600 dark:text-green-400 font-semibold">+${h.amount} so'm</span>
-              <span class="text-xs text-gray-500 ml-2">
-                (${h.count || 1} x ${h.price || h.amount} so'm, ${h.product || debtor.product || ""})
-              </span>
-            </div>
-            <span class="text-xs text-gray-400">${time}</span>
-          </div>
-          ${h.note ? `<div class="text-xs text-gray-400 mt-1">${h.note}</div>` : ''}
+          +${h.amount} so'm 
+          <span class="text-xs text-gray-500 ml-2">
+            (${h.count || 1} x ${h.price || h.amount} so'm, ${h.product || debtor.product || ""})
+          </span>
+          <span class="text-xs text-gray-400 ml-2">${time}</span>
+          <div class="text-xs text-gray-400">${h.note || ""}</div>
         </div>`;
       totalAdd += h.amount;
     }
 
     if (h.type === "sub") {
-      allTransactions += `
+      combinedHistory += `
         <div class="bg-red-100 dark:bg-red-900 rounded p-2 mb-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <span class="text-red-600 dark:text-red-400 font-semibold">-${h.amount} so'm</span>
-            </div>
-            <span class="text-xs text-gray-400">${time}</span>
-          </div>
-          ${h.note ? `<div class="text-xs text-gray-400 mt-1">${h.note}</div>` : ''}
+          -${h.amount} so'm 
+          <span class="text-xs text-gray-400 ml-2">${time}</span>
+          ${h.note ? `<div class="text-xs text-gray-400 mt-1">${h.note}</div>` : ""}
         </div>`;
       totalSub += h.amount;
     }
@@ -482,9 +486,9 @@ function openDebtorModal(debtor) {
     </div>
     <div class="flex-1 flex flex-col gap-4">
       <div>
-        <div class="font-bold mb-2 text-gray-900 dark:text-white">Transaksiyalar tarixi</div>
-        <div class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-          ${allTransactions || '<div class="text-gray-400">Transaksiyalar yo\'q</div>'}
+        <div class="font-bold mb-2 text-gray-900 dark:text-white">Barcha harakatlar (vaqti bo'yicha)</div>
+        <div class="space-y-2 max-h-96 overflow-y-auto">
+          ${combinedHistory || '<div class="text-gray-400">Yo\'q</div>'}
         </div>
       </div>
     </div>
@@ -676,29 +680,45 @@ async function showSidebarUser() {
     }
   }
 
-  // Update sidebar user information
-  const userNameElement = document.getElementById("userName");
-  const userIdElement = document.getElementById("userId");
-  const userCodeElement = document.getElementById("userCode");
-  const userInitialsElement = document.getElementById("userInitials");
-  
-  if (userNameElement) {
-    userNameElement.textContent = user.displayName || "Foydalanuvchi";
+  // Sidebar'da ism, raqam, ID va rasmni chiqarish
+  let sidebarUserDiv = document.getElementById("sidebarUserInfo");
+  if (!sidebarUserDiv) {
+    sidebarUserDiv = document.createElement("div");
+    sidebarUserDiv.id = "sidebarUserInfo";
+    sidebarUserDiv.className = "flex items-center gap-3 mb-4 p-3 rounded-lg bg-gray-100 dark:bg-gray-800 shadow";
+    // logoutBtn tugmasidan oldin joylashtiramiz
+    const logoutBtn = document.getElementById("logoutBtn");
+    logoutBtn.parentNode.insertBefore(sidebarUserDiv, logoutBtn);
   }
+  // Check premium status
+  const isPremium = await checkPremiumStatus();
   
-  if (userIdElement) {
-    userIdElement.textContent = `#${sidebarNumber}`;
-  }
-  
-  if (userCodeElement) {
-    userCodeElement.textContent = sidebarUserCode;
-  }
-  
-  if (userInitialsElement) {
-    const name = user.displayName || "Foydalanuvchi";
-    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    userInitialsElement.textContent = initials;
-  }
+  // User photo
+  const photoURL = user.photoURL || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.displayName || "Foydalanuvchi") + "&background=0D8ABC&color=fff&size=64";
+  sidebarUserDiv.innerHTML = `
+    <div class="relative">
+      <img src="${photoURL}" alt="User" class="w-12 h-12 rounded-full border-2 border-blue-400 shadow" />
+      ${isPremium ? `
+        <div class="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+          <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+          </svg>
+        </div>
+      ` : ''}
+    </div>
+    <div>
+      <div class="font-bold text-lg flex items-center gap-2">
+        <span>${user.displayName || "Foydalanuvchi"}</span>
+        <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
+        ${isPremium ? `
+          <span class="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs rounded-full font-bold">
+            PREMIUM
+          </span>
+        ` : ''}
+      </div>
+      <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
+    </div>
+  `;
 }
 
 // Custom confirmation dialog
@@ -714,7 +734,7 @@ function showConfirmDiv(message) {
         <div class="mb-4 font-bold text-lg">${message}</div>
         <div class="flex gap-2 justify-center">
           <button id="confirmYes" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Ha</button>
-          <button id="confirmNo" class="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded">Yo‘q</button>
+          <button id="confirmNo" class="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 px-4 py-2 rounded">Yo'q</button>
         </div>
       </div>
     `;
@@ -1009,17 +1029,42 @@ searchByNameOrIdInput.addEventListener('input', async function () {
             </div>
             <div class="text-xs text-gray-400 font-mono">ID: ${user.id}</div>
           </div>
-          <!-- <button class=\"add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow text-sm\" data-id=\"${user.id}\">Qo‘shish</button> -->
-          <button class="send-code-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow text-sm" data-id="${user.id}">Kod jonatish</button>
+          <button class="add-search-user-btn bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded shadow text-sm" data-id="${user.id}">Qo'shish</button>
         </div>
         `;
       })
       .join('');
-    // Yangi Kod jonatish tugmasi uchun event
-    document.querySelectorAll('.send-code-btn').forEach(btn => {
-      btn.onclick = function() {
+    // Qo'shish tugmalariga event biriktirish
+    document.querySelectorAll('.add-search-user-btn').forEach(btn => {
+      btn.onclick = async function() {
         const userId = this.getAttribute('data-id');
-        showSendCodeCard(userId);
+        const user = allUsers.find(u => u.id === userId);
+        if (!user || addedSearchUsers.some(u => u.id === user.id)) return;
+        
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          showNotification('Avval tizimga kirishingiz kerak!', 'error');
+          return;
+        }
+        
+        // Check permission
+        const hasPermission = await checkPermissionToAddUser(user);
+        if (hasPermission) {
+          // Direct add if user has permission
+          addedSearchUsers.push(user);
+          renderAddedSearchUsers();
+          saveAddedSearchUsers();
+          showNotification(`${user.name} muvaffaqiyatli qo'shildi!`, 'success');
+        } else {
+          // Request permission
+          const result = await requestPermissionToAddUser(user, currentUser);
+          if (result.granted) {
+            addedSearchUsers.push(user);
+            renderAddedSearchUsers();
+            saveAddedSearchUsers();
+            showNotification(`${user.name} muvaffaqiyatli qo'shildi!`, 'success');
+          }
+        }
       };
     });
   }
@@ -1188,7 +1233,7 @@ function updateDebtorCount() {
   localStorage.setItem("debtorCount", totalDebtorsCount);
 }
 
-// Modalni ko‘rsatish uchun yordamchi funksiya
+// Modalni ko'rsatish uchun yordamchi funksiya
 function showUserDetailModal(user) {
   // Modal yaratish yoki mavjudini olish
   let modal = document.getElementById('userDetailModal');
@@ -1239,21 +1284,264 @@ async function loadAddedSearchUsers() {
   }
 }
 
-// Search orqali qo‘shishda ham saqlash
-document.querySelectorAll('.add-search-user-btn').forEach(btn => {
-  btn.onclick = function() {
-    const userId = this.getAttribute('data-id');
-    const user = allUsers.find(u => u.id === userId);
-    if (user && !addedSearchUsers.some(u => u.id === user.id)) {
-      addedSearchUsers.push(user);
-      renderAddedSearchUsers();
-      saveAddedSearchUsers(); // <-- Qo‘shildi
-      updateDebtorCount(); // Update debtor count when adding
-    }
-  };
-});
+// Search orqali qo'shishda ham saqlash - DUPLICATE REMOVED
+// Bu event listener yuqorida allaqachon qo'shilgan va permission system bilan almashtirilgan
 
-// "Mening qarzlarim" tugmasi bosilganda sizga yozilgan qarzlarni ko‘rsatish
+// Permission system for adding users
+let pendingPermissionRequests = new Map(); // Store pending requests
+
+// Function to request permission to add a user
+async function requestPermissionToAddUser(userToAdd, requestingUser) {
+  return new Promise((resolve) => {
+    // Create permission request modal
+    const modal = document.createElement('div');
+    modal.id = 'permissionModal';
+    modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50';
+    modal.innerHTML = `
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 relative border border-gray-200 dark:border-gray-700">
+        <button id="closePermissionModal" class="absolute top-3 right-3 text-2xl text-gray-400 hover:text-red-500 transition">&times;</button>
+        
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Ruxsat so'rash</h3>
+          <p class="text-gray-600 dark:text-gray-300 text-sm">Foydalanuvchiga qarzdor qo'shish uchun ruxsat so'ralmoqda</p>
+        </div>
+
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
+              ${userToAdd.name.slice(0,2).toUpperCase()}
+            </div>
+            <div class="flex-1">
+              <div class="font-bold text-gray-900 dark:text-white">${userToAdd.name}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">ID: ${userToAdd.id}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <button id="requestPermissionBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold transition">
+            Ruxsat so'rash
+          </button>
+          <button id="premiumUpgradeBtn" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-4 py-3 rounded-lg font-semibold transition">
+            <div class="flex items-center justify-center gap-2">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+              </svg>
+              Premium olish
+            </div>
+          </button>
+          <button id="cancelPermissionBtn" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-3 rounded-lg font-semibold transition">
+            Bekor qilish
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Event listeners
+    const closeBtn = modal.querySelector('#closePermissionModal');
+    const requestBtn = modal.querySelector('#requestPermissionBtn');
+    const premiumBtn = modal.querySelector('#premiumUpgradeBtn');
+    const cancelBtn = modal.querySelector('#cancelPermissionBtn');
+
+    const closeModal = () => {
+      modal.remove();
+    };
+
+    closeBtn.onclick = closeModal;
+    cancelBtn.onclick = () => {
+      closeModal();
+      resolve({ granted: false, reason: 'cancelled' });
+    };
+
+    requestBtn.onclick = async () => {
+      closeModal();
+      const result = await sendPermissionRequest(userToAdd, requestingUser);
+      resolve(result);
+    };
+
+    premiumBtn.onclick = () => {
+      closeModal();
+      showPremiumUpgradeModal();
+      resolve({ granted: false, reason: 'premium_required' });
+    };
+  });
+}
+
+// Function to send permission request to user owner
+async function sendPermissionRequest(userToAdd, requestingUser) {
+  try {
+    // Create a permission request document
+    const permissionRequest = {
+      requestingUserId: requestingUser.uid,
+      requestingUserName: requestingUser.displayName || requestingUser.email,
+      targetUserId: userToAdd.id,
+      targetUserName: userToAdd.name,
+      status: 'pending',
+      timestamp: new Date(),
+      type: 'add_debtor'
+    };
+
+    // Save to Firebase
+    const requestRef = await addDoc(collection(db, "permissionRequests"), permissionRequest);
+    
+    // Show success message
+    showNotification('Ruxsat so\'rovi yuborildi! Foydalanuvchi tasdiqlagandan so\'ng xabar beramiz.', 'success');
+    
+    // Store the request ID for tracking
+    pendingPermissionRequests.set(userToAdd.id, requestRef.id);
+    
+    return { granted: false, reason: 'pending_approval', requestId: requestRef.id };
+  } catch (error) {
+    console.error('Error sending permission request:', error);
+    showNotification('Xatolik yuz berdi. Qaytadan urinib ko\'ring.', 'error');
+    return { granted: false, reason: 'error' };
+  }
+}
+
+// Function to show premium upgrade modal
+function showPremiumUpgradeModal() {
+  const modal = document.createElement('div');
+  modal.id = 'premiumModal';
+  modal.className = 'fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50';
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg p-8 relative border border-gray-200 dark:border-gray-700">
+      <button id="closePremiumModal" class="absolute top-3 right-3 text-2xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      
+      <div class="text-center mb-6">
+        <div class="w-20 h-20 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
+          <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Premium a'zolik</h3>
+        <p class="text-gray-600 dark:text-gray-300">Cheksiz qarzdor qo'shish imkoniyati</p>
+      </div>
+
+      <div class="space-y-4 mb-6">
+        <div class="flex items-center gap-3 text-left">
+          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span class="text-gray-700 dark:text-gray-300">Cheksiz qarzdor qo'shish</span>
+        </div>
+        <div class="flex items-center gap-3 text-left">
+          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span class="text-gray-700 dark:text-gray-300">Ruxsatsiz qo'shish</span>
+        </div>
+        <div class="flex items-center gap-3 text-left">
+          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <span class="text-gray-700 dark:text-gray-300">Barcha funksiyalar</span>
+        </div>
+      </div>
+
+      <div class="text-center">
+        <div class="text-3xl font-bold text-gray-900 dark:text-white mb-2">99,000 so'm</div>
+        <div class="text-sm text-gray-500 dark:text-gray-400 mb-6">oyiga</div>
+        
+        <button id="upgradeToPremiumBtn" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-6 py-4 rounded-lg font-bold text-lg transition">
+          Premium olish
+        </button>
+        
+        <button id="closePremiumModalBtn" class="w-full mt-3 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition">
+          Keyinroq
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = modal.querySelector('#closePremiumModal');
+  const closeBtn2 = modal.querySelector('#closePremiumModalBtn');
+  const upgradeBtn = modal.querySelector('#upgradeToPremiumBtn');
+
+  const closeModal = () => modal.remove();
+
+  closeBtn.onclick = closeModal;
+  closeBtn2.onclick = closeModal;
+  upgradeBtn.onclick = async () => {
+    closeModal();
+    await upgradeToPremium();
+  };
+}
+
+// Function to show notifications
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `fixed top-4 right-4 z-[80] p-4 rounded-lg shadow-lg max-w-sm transition-all duration-300 transform translate-x-full`;
+  
+  const colors = {
+    success: 'bg-green-500 text-white',
+    error: 'bg-red-500 text-white',
+    info: 'bg-blue-500 text-white',
+    warning: 'bg-yellow-500 text-white'
+  };
+  
+  notification.className += ` ${colors[type]}`;
+  notification.innerHTML = `
+    <div class="flex items-center gap-3">
+      <div class="flex-1">${message}</div>
+      <button class="text-white hover:text-gray-200 text-xl">&times;</button>
+    </div>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.classList.remove('translate-x-full');
+  }, 100);
+  
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    notification.classList.add('translate-x-full');
+    setTimeout(() => notification.remove(), 300);
+  }, 5000);
+  
+  // Manual close
+  notification.querySelector('button').onclick = () => {
+    notification.classList.add('translate-x-full');
+    setTimeout(() => notification.remove(), 300);
+  };
+}
+
+// Function to check if user has permission to add another user
+async function checkPermissionToAddUser(userToAdd) {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return false;
+  
+  // Check if user is premium
+  const isPremium = await checkPremiumStatus();
+  if (isPremium) {
+    return true;
+  }
+  
+  // Check if user owns the target user
+  if (userToAdd.userId === currentUser.uid || userToAdd.id === currentUser.uid) {
+    return true;
+  }
+  
+  return false;
+}
+
+// "Mening qarzlarim" tugmasi bosilganda sizga yozilgan qarzlarni ko'rsatish
 document.getElementById('myDebtsBtn').onclick = async () => {
   const user = auth.currentUser;
   if (!user) return;
@@ -1263,7 +1551,7 @@ document.getElementById('myDebtsBtn').onclick = async () => {
   const userSnap = await getDoc(userRef);
   const sidebarUserCode = userSnap.exists() ? (userSnap.data().sidebarUserCode || user.uid) : user.uid;
 
-  // Sizga yozilgan qarzlarni topamiz (faqat o‘zining ID yoki sidebarUserCode bo‘yicha)
+  // Sizga yozilgan qarzlarni topamiz (faqat o'zining ID yoki sidebarUserCode bo'yicha)
   const debtorsSnap = await getDocs(collection(db, "debtors"));
   const myDebts = [];
   debtorsSnap.forEach(docu => {
@@ -1297,7 +1585,7 @@ document.getElementById('myDebtsBtn').onclick = async () => {
           const authorName = usersMap[authorId] || authorId || "-";
           return `
             <div class="p-2 rounded mb-1 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
-              <b>${h.type === "add" ? "+" : "-"}${h.amount} so‘m</b>
+              <b>${h.type === "add" ? "+" : "-"}${h.amount} so'm</b>
               <span class="text-xs text-gray-500 ml-2">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
               <div class="text-xs text-gray-400">${h.note || ""}</div>
               <div class="text-xs text-gray-500">Kim yozgan: <b>${authorName}</b></div>
@@ -1307,7 +1595,7 @@ document.getElementById('myDebtsBtn').onclick = async () => {
         return `
           <div class="p-3 rounded bg-gray-100 dark:bg-gray-700 mb-4">
             <div class="text-xs text-gray-400 mb-1">ID: <b>${d.code || d.userId || "-"}</b></div>
-            <div class="mt-2">${historyHtml || "<span class='text-gray-400'>Tarix yo‘q</span>"}</div>
+            <div class="mt-2">${historyHtml || "<span class='text-gray-400'>Tarix yo'q</span>"}</div>
           </div>
         `;
       }).join("")
@@ -1325,13 +1613,13 @@ if (typeof d.totalAdded !== "number") {
   let totalAdd = 0;
   (d.history || []).forEach(h => { if (h.type === "add") totalAdd += h.amount || 0; });
   d.totalAdded = totalAdd;
-  // Istasangiz, Firebase'ga ham yozib qo‘ying:
+  // Istasangiz, Firebase'ga ham yozib qo'ying:
   updateDoc(doc(db, "debtors", d.id), { totalAdded: totalAdd });
 }
 
 // Ball berish cardi funksiyasi
 function showRatingCard(onRated) {
-  // Eski card bo‘lsa o‘chiramiz
+  // Eski card bo'lsa o'chiramiz
   document.getElementById('ratingCardDiv')?.remove();
   const div = document.createElement('div');
   div.id = 'ratingCardDiv';
@@ -1344,7 +1632,7 @@ function showRatingCard(onRated) {
           <button class="rating-btn bg-gray-200 hover:bg-yellow-400 text-xl rounded-full w-10 h-10 font-bold" data-rating="${i}">${i}</button>
         `).join('')}
       </div>
-      <div class="text-xs text-gray-500">Ball berilgandan so‘ng bu oynacha yopiladi.</div>
+      <div class="text-xs text-gray-500">Ball berilgandan so'ng bu oynacha yopiladi.</div>
     </div>
   `;
   document.body.appendChild(div);
@@ -1406,56 +1694,269 @@ async function updateUserTotals() {
   return { totalAdded, totalSubtracted, totalDebt };
 }
 
-// Modal/card function for Kod jonatish
-function showSendCodeCard(userId) {
-  // Remove old modal if exists
-  document.getElementById('sendCodeCardModal')?.remove();
-  const user = allUsers.find(u => u.id === userId);
+// Function to check for pending permission requests
+async function checkPendingPermissionRequests() {
   const currentUser = auth.currentUser;
+  if (!currentUser) return;
   
-  if (!currentUser) {
-    alert('Avval tizimga kiring!');
-    return;
+  try {
+    const requestsRef = collection(db, "permissionRequests");
+    const q = query(requestsRef, where("targetUserId", "==", currentUser.uid), where("status", "==", "pending"));
+    const querySnapshot = await getDocs(q);
+    
+    querySnapshot.forEach((doc) => {
+      const request = doc.data();
+      showPermissionRequestNotification(request, doc.id);
+    });
+  } catch (error) {
+    console.error('Error checking pending requests:', error);
   }
+}
 
-  const div = document.createElement('div');
-  div.id = 'sendCodeCardModal';
-  div.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-40';
-  div.innerHTML = `
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-xs text-center border border-gray-300 dark:border-gray-700 relative">
-      <button id="closeSendCodeCard" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xl">&times;</button>
-      <div class="mb-4 font-bold text-lg">Qarz qo'shish so'rovi</div>
-      <div class="mb-2 text-gray-700 dark:text-gray-200">${user ? user.name : ''} (#${userId}) ga so'rov yuborish</div>
-      
-      <button id="submitSendCode" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow w-full">Yuborish</button>
+// Function to show permission request notification
+function showPermissionRequestNotification(request, requestId) {
+  const notification = document.createElement('div');
+  notification.className = 'fixed top-4 right-4 z-[90] p-4 rounded-lg shadow-lg max-w-sm bg-blue-500 text-white transition-all duration-300 transform translate-x-full';
+  notification.innerHTML = `
+    <div class="flex items-start gap-3">
+      <div class="flex-1">
+        <div class="font-bold mb-1">Ruxsat so'rovi</div>
+        <div class="text-sm mb-3">${request.requestingUserName} sizga qarzdor qo'shish uchun ruxsat so'rayapti</div>
+        <div class="flex gap-2">
+          <button id="approveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition">Tasdiqlash</button>
+          <button id="rejectBtn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition">Rad etish</button>
+        </div>
+      </div>
+      <button id="closeNotification" class="text-white hover:text-gray-200 text-xl">&times;</button>
     </div>
   `;
-  document.body.appendChild(div);
-  div.querySelector('#closeSendCodeCard').onclick = () => div.remove();
-  div.querySelector('#submitSendCode').onclick = async () => {
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Get current user info
-    const currentUserRef = doc(db, 'users', currentUser.uid);
-    const currentUserSnap = await getDoc(currentUserRef);
-    const currentUserData = currentUserSnap.exists() ? currentUserSnap.data() : {};
-    
-    // Save to Firestore 'messages' collection with request info
-    await addDoc(collection(db, 'messages'), {
-      to: userId,
-      code,
-      createdAt: Timestamp.now(),
-      status: 'pending',
-      from: currentUser.uid,
-      fromName: currentUserData.name || 'Noma\'lum',
-      fromId: currentUserData.sidebarUserCode || currentUser.uid,
-      fromNumber: currentUserData.sidebarNumber || '',
-      requestType: 'debt_request'
-    });
-    alert('So\'rov yuborildi! ID egasi xabarlar sahifasida so\'rovni ko\'radi va javob beradi.');
-    div.remove();
+  
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.classList.remove('translate-x-full');
+  }, 100);
+  
+  // Event listeners
+  const closeBtn = notification.querySelector('#closeNotification');
+  const approveBtn = notification.querySelector('#approveBtn');
+  const rejectBtn = notification.querySelector('#rejectBtn');
+  
+  const closeNotification = () => {
+    notification.classList.add('translate-x-full');
+    setTimeout(() => notification.remove(), 300);
   };
+  
+  closeBtn.onclick = closeNotification;
+  
+  approveBtn.onclick = async () => {
+    await updatePermissionRequest(requestId, 'approved');
+    closeNotification();
+    showNotification('Ruxsat berildi!', 'success');
+    
+    // Ruxsat berilgandan so'ng qarzdorni avtomatik qo'shish
+    const userToAdd = allUsers.find(u => u.id === request.targetUserId);
+    if (userToAdd) {
+      // Qarzdorni qo'shish
+      if (!addedSearchUsers.some(u => u.id === userToAdd.id)) {
+        addedSearchUsers.push(userToAdd);
+        renderAddedSearchUsers();
+        saveAddedSearchUsers();
+        showNotification(`${userToAdd.name} avtomatik qo'shildi!`, 'success');
+      }
+    }
+  };
+  
+  rejectBtn.onclick = async () => {
+    await updatePermissionRequest(requestId, 'rejected');
+    closeNotification();
+    showNotification('Ruxsat rad etildi', 'info');
+  };
+  
+  // Auto remove after 30 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      closeNotification();
+    }
+  }, 30000);
+}
+
+// Function to update permission request status
+async function updatePermissionRequest(requestId, status) {
+  try {
+    const requestRef = doc(db, "permissionRequests", requestId);
+    await updateDoc(requestRef, { 
+      status: status,
+      respondedAt: new Date()
+    });
+    
+    // If approved, notify the requesting user and auto-add the user
+    if (status === 'approved') {
+      const requestSnap = await getDoc(requestRef);
+      const request = requestSnap.data();
+      
+      // Create a notification for the requesting user
+      const notificationRef = await addDoc(collection(db, "notifications"), {
+        userId: request.requestingUserId,
+        type: 'permission_approved',
+        message: `${request.targetUserName} sizning ruxsat so'rovingizni tasdiqladi va ${request.targetUserName} avtomatik qo'shildi`,
+        timestamp: new Date(),
+        read: false
+      });
+      
+      // Auto-add the user to the current user's list
+      const userToAdd = allUsers.find(u => u.id === request.targetUserId);
+      if (userToAdd && !addedSearchUsers.some(u => u.id === userToAdd.id)) {
+        addedSearchUsers.push(userToAdd);
+        renderAddedSearchUsers();
+        saveAddedSearchUsers();
+        showNotification(`${userToAdd.name} ruxsat berilgandan so'ng avtomatik qo'shildi!`, 'success');
+      }
+    }
+  } catch (error) {
+    console.error('Error updating permission request:', error);
+  }
+}
+
+// Function to check for notifications
+async function checkNotifications() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  try {
+    const notificationsRef = collection(db, "notifications");
+    const q = query(notificationsRef, where("userId", "==", currentUser.uid), where("read", "==", false));
+    const querySnapshot = await getDocs(q);
+    
+    querySnapshot.forEach((doc) => {
+      const notification = doc.data();
+      showNotification(notification.message, 'success');
+      
+      // Mark as read
+      updateDoc(doc.ref, { read: true });
+    });
+  } catch (error) {
+    console.error('Error checking notifications:', error);
+  }
+}
+
+// Function to set up real-time listener for permission requests
+function setupPermissionRequestListener() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  const requestsRef = collection(db, "permissionRequests");
+  const q = query(requestsRef, where("targetUserId", "==", currentUser.uid), where("status", "==", "pending"));
+  
+  onSnapshot(q, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const request = change.doc.data();
+        showPermissionRequestNotification(request, change.doc.id);
+      }
+    });
+  });
+}
+
+// Function to set up real-time listener for notifications
+function setupNotificationListener() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  const notificationsRef = collection(db, "notifications");
+  const q = query(notificationsRef, where("userId", "==", currentUser.uid), where("read", "==", false));
+  
+  onSnapshot(q, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const notification = change.doc.data();
+        showNotification(notification.message, 'success');
+        
+        // Mark as read after showing
+        setTimeout(() => {
+          updateDoc(change.doc.ref, { read: true });
+        }, 2000);
+      }
+    });
+  });
+}
+
+// Function to set up real-time listener for permission request updates
+function setupPermissionUpdateListener() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  const requestsRef = collection(db, "permissionRequests");
+  const q = query(requestsRef, where("requestingUserId", "==", currentUser.uid), where("status", "in", ["approved", "rejected"]));
+  
+  onSnapshot(q, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "modified") {
+        const request = change.doc.data();
+        if (request.status === "approved") {
+          showNotification(`Ruxsat berildi! ${request.targetUserName} sizga qo'shildi.`, 'success');
+        } else if (request.status === "rejected") {
+          showNotification(`Ruxsat rad etildi.`, 'warning');
+        }
+      }
+    });
+  });
+}
+
+// Function to upgrade user to premium
+async function upgradeToPremium() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    showNotification('Avval tizimga kirishingiz kerak!', 'error');
+    return;
+  }
+  
+  try {
+    const userRef = doc(db, "users", currentUser.uid);
+    await updateDoc(userRef, {
+      isPremium: true,
+      premiumUpgradedAt: new Date(),
+      premiumExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+    });
+    
+    showNotification('Tabriklaymiz! Siz premium a\'zo bo\'ldingiz!', 'success');
+    
+    // Reload user data to reflect premium status
+    showSidebarUser();
+  } catch (error) {
+    console.error('Error upgrading to premium:', error);
+    showNotification('Xatolik yuz berdi. Qaytadan urinib ko\'ring.', 'error');
+  }
+}
+
+// Function to check if user's premium is still valid
+async function checkPremiumStatus() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return false;
+  
+  try {
+    const userRef = doc(db, "users", currentUser.uid);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      if (userData.isPremium && userData.premiumExpiresAt) {
+        const expiresAt = userData.premiumExpiresAt.toDate ? userData.premiumExpiresAt.toDate() : new Date(userData.premiumExpiresAt);
+        if (expiresAt > new Date()) {
+          return true;
+        } else {
+          // Premium expired, update status
+          await updateDoc(userRef, { isPremium: false });
+          return false;
+        }
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking premium status:', error);
+    return false;
+  }
 }
 
 
