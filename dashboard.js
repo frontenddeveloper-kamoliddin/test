@@ -19,6 +19,7 @@ import {
   query,
   where,
   onSnapshot,
+  orderBy,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase configuration
@@ -53,6 +54,12 @@ onAuthStateChanged(auth, (user) => {
     setupPermissionRequestListener();
     setupNotificationListener();
     setupPermissionUpdateListener();
+    
+    // Initialize messages modal
+    initializeMessagesModal();
+    
+    // Update message count badge
+    updateMessageCountBadge();
   }
 });
 
@@ -1377,6 +1384,8 @@ async function requestPermissionToAddUser(userToAdd, requestingUser) {
 // Function to send permission request to user owner
 async function sendPermissionRequest(userToAdd, requestingUser) {
   try {
+    console.log('Sending permission request:', { userToAdd, requestingUser });
+    
     // Create a permission request document
     const permissionRequest = {
       requestingUserId: requestingUser.uid,
@@ -1388,8 +1397,12 @@ async function sendPermissionRequest(userToAdd, requestingUser) {
       type: 'add_debtor'
     };
 
+    console.log('Permission request data:', permissionRequest);
+
     // Save to Firebase
     const requestRef = await addDoc(collection(db, "permissionRequests"), permissionRequest);
+    
+    console.log('Permission request saved with ID:', requestRef.id);
     
     // Show success message
     showNotification('Ruxsat so\'rovi yuborildi! Foydalanuvchi tasdiqlagandan so\'ng xabar beramiz.', 'success');
@@ -1609,13 +1622,14 @@ document.getElementById('closeMyDebtsModal').onclick = () => {
   document.getElementById('myDebtsModal').classList.add('hidden');
 };
 
-if (typeof d.totalAdded !== "number") {
-  let totalAdd = 0;
-  (d.history || []).forEach(h => { if (h.type === "add") totalAdd += h.amount || 0; });
-  d.totalAdded = totalAdd;
-  // Istasangiz, Firebase'ga ham yozib qo'ying:
-  updateDoc(doc(db, "debtors", d.id), { totalAdded: totalAdd });
-}
+// Bu kod noto'g'ri joyda ekan, uni o'chiramiz
+// if (typeof d.totalAdded !== "number") {
+//   let totalAdd = 0;
+//   (d.history || []).forEach(h => { if (h.type === "add") totalAdd += h.amount || 0; });
+//   d.totalAdded = totalAdd;
+//   // Istasangiz, Firebase'ga ham yozib qo'ying:
+//   updateDoc(doc(db, "debtors", d.id), { totalAdded: totalAdd });
+// }
 
 // Ball berish cardi funksiyasi
 function showRatingCard(onRated) {
@@ -1701,12 +1715,14 @@ async function checkPendingPermissionRequests() {
   
   try {
     const requestsRef = collection(db, "permissionRequests");
-    const q = query(requestsRef, where("targetUserId", "==", currentUser.uid), where("status", "==", "pending"));
+    const q = query(requestsRef, where("targetUserId", "==", currentUser.uid));
     const querySnapshot = await getDocs(q);
     
     querySnapshot.forEach((doc) => {
       const request = doc.data();
-      showPermissionRequestNotification(request, doc.id);
+      if (request.status === "pending") {
+        showPermissionRequestNotification(request, doc.id);
+      }
     });
   } catch (error) {
     console.error('Error checking pending requests:', error);
@@ -1826,15 +1842,17 @@ async function checkNotifications() {
   
   try {
     const notificationsRef = collection(db, "notifications");
-    const q = query(notificationsRef, where("userId", "==", currentUser.uid), where("read", "==", false));
+    const q = query(notificationsRef, where("userId", "==", currentUser.uid));
     const querySnapshot = await getDocs(q);
     
     querySnapshot.forEach((doc) => {
       const notification = doc.data();
-      showNotification(notification.message, 'success');
-      
-      // Mark as read
-      updateDoc(doc.ref, { read: true });
+      if (!notification.read) {
+        showNotification(notification.message, 'success');
+        
+        // Mark as read
+        updateDoc(doc.ref, { read: true });
+      }
     });
   } catch (error) {
     console.error('Error checking notifications:', error);
@@ -1847,13 +1865,23 @@ function setupPermissionRequestListener() {
   if (!currentUser) return;
   
   const requestsRef = collection(db, "permissionRequests");
-  const q = query(requestsRef, where("targetUserId", "==", currentUser.uid), where("status", "==", "pending"));
+  const q = query(requestsRef, where("targetUserId", "==", currentUser.uid));
   
   onSnapshot(q, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       if (change.type === "added") {
         const request = change.doc.data();
-        showPermissionRequestNotification(request, change.doc.id);
+        if (request.status === "pending") {
+          showPermissionRequestNotification(request, change.doc.id);
+        }
+        
+        // Update messages modal if it's open
+        if (!messagesModal.classList.contains('hidden')) {
+          loadPermissionRequests();
+        }
+        
+        // Update message count badge
+        updateMessageCountBadge();
       }
     });
   });
@@ -1865,18 +1893,28 @@ function setupNotificationListener() {
   if (!currentUser) return;
   
   const notificationsRef = collection(db, "notifications");
-  const q = query(notificationsRef, where("userId", "==", currentUser.uid), where("read", "==", false));
+  const q = query(notificationsRef, where("userId", "==", currentUser.uid));
   
   onSnapshot(q, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
       if (change.type === "added") {
         const notification = change.doc.data();
-        showNotification(notification.message, 'success');
-        
-        // Mark as read after showing
-        setTimeout(() => {
-          updateDoc(change.doc.ref, { read: true });
-        }, 2000);
+        if (!notification.read) {
+          showNotification(notification.message, 'success');
+          
+          // Mark as read after showing
+          setTimeout(() => {
+            updateDoc(change.doc.ref, { read: true });
+          }, 2000);
+          
+          // Update messages modal if it's open
+          if (!messagesModal.classList.contains('hidden')) {
+            loadNotifications();
+          }
+          
+          // Update message count badge
+          updateMessageCountBadge();
+        }
       }
     });
   });
@@ -1888,7 +1926,7 @@ function setupPermissionUpdateListener() {
   if (!currentUser) return;
   
   const requestsRef = collection(db, "permissionRequests");
-  const q = query(requestsRef, where("requestingUserId", "==", currentUser.uid), where("status", "in", ["approved", "rejected"]));
+  const q = query(requestsRef, where("requestingUserId", "==", currentUser.uid));
   
   onSnapshot(q, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
@@ -1956,6 +1994,319 @@ async function checkPremiumStatus() {
   } catch (error) {
     console.error('Error checking premium status:', error);
     return false;
+  }
+}
+
+// Messages modal functionality
+function initializeMessagesModal() {
+  const messagesBtn = document.getElementById('messagesBtn');
+  const messagesModal = document.getElementById('messagesModal');
+  const closeMessagesModal = document.getElementById('closeMessagesModal');
+  const permissionRequestsTab = document.getElementById('permissionRequestsTab');
+  const notificationsTab = document.getElementById('notificationsTab');
+  const permissionRequestsContent = document.getElementById('permissionRequestsContent');
+  const notificationsContent = document.getElementById('notificationsContent');
+  const emptyMessagesState = document.getElementById('emptyMessagesState');
+
+  if (!messagesBtn || !messagesModal) {
+    console.error('Messages modal elements not found');
+    return;
+  }
+
+  // Open messages modal
+  messagesBtn.addEventListener('click', () => {
+    messagesModal.classList.remove('hidden');
+    loadPermissionRequests();
+    loadNotifications();
+  });
+
+  // Close messages modal
+  closeMessagesModal.addEventListener('click', () => {
+    messagesModal.classList.add('hidden');
+  });
+
+  // Tab switching
+  permissionRequestsTab.addEventListener('click', () => {
+    permissionRequestsTab.classList.add('text-orange-600', 'border-b-2', 'border-orange-600');
+    permissionRequestsTab.classList.remove('text-gray-500');
+    notificationsTab.classList.remove('text-orange-600', 'border-b-2', 'border-orange-600');
+    notificationsTab.classList.add('text-gray-500');
+    
+    permissionRequestsContent.classList.remove('hidden');
+    notificationsContent.classList.add('hidden');
+  });
+
+  notificationsTab.addEventListener('click', () => {
+    notificationsTab.classList.add('text-orange-600', 'border-b-2', 'border-orange-600');
+    notificationsTab.classList.remove('text-gray-500');
+    permissionRequestsTab.classList.remove('text-orange-600', 'border-b-2', 'border-orange-600');
+    permissionRequestsTab.classList.add('text-gray-500');
+    
+    notificationsContent.classList.remove('hidden');
+    permissionRequestsContent.classList.add('hidden');
+  });
+}
+
+// Load permission requests
+async function loadPermissionRequests() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    console.log('No current user, skipping permission requests load');
+    return;
+  }
+  
+  console.log('Loading permission requests for user:', currentUser.uid);
+  
+  try {
+    const requestsRef = collection(db, "permissionRequests");
+    const q = query(requestsRef, where("targetUserId", "==", currentUser.uid));
+    const querySnapshot = await getDocs(q);
+    
+    console.log('Permission requests query result:', querySnapshot.size, 'documents');
+    
+    const requests = [];
+    
+    querySnapshot.forEach((doc) => {
+      const request = { ...doc.data(), id: doc.id };
+      requests.push(request);
+      console.log('Permission request:', request);
+    });
+    
+    // Sort by timestamp in JavaScript (newest first)
+    requests.sort((a, b) => {
+      const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+      const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+      return timeB - timeA;
+    });
+    
+    const requestsList = document.getElementById('permissionRequestsList');
+    if (!requestsList) {
+      console.error('Permission requests list element not found');
+      return;
+    }
+    
+    if (requests.length === 0) {
+      console.log('No permission requests found');
+      requestsList.innerHTML = `
+        <div class="text-center py-8 text-gray-500">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-sm">Ruxsat so'rovlari yo'q</p>
+        </div>
+      `;
+      return;
+    }
+    
+    console.log('Rendering', requests.length, 'permission requests');
+    
+    requestsList.innerHTML = requests.map(request => {
+      const timestamp = request.timestamp?.toDate ? request.timestamp.toDate() : new Date(request.timestamp);
+      const timeAgo = getTimeAgo(timestamp);
+      const statusColor = request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                         request.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                         'bg-red-100 text-red-800';
+      const statusText = request.status === 'pending' ? 'Kutilmoqda' : 
+                        request.status === 'approved' ? 'Tasdiqlangan' : 'Rad etilgan';
+      
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                  ${request.requestingUserName?.slice(0,2).toUpperCase() || '??'}
+                </div>
+                <div>
+                  <div class="font-semibold text-gray-900 dark:text-white">
+                    ${request.requestingUserName || 'Noma\'lum foydalanuvchi'}
+                  </div>
+                  <div class="text-sm text-gray-500 dark:text-gray-400">
+                    ${request.targetUserName} uchun ruxsat so'rayapti
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="text-xs text-gray-400">${timeAgo}</div>
+                <span class="px-2 py-1 text-xs font-medium rounded-full ${statusColor}">
+                  ${statusText}
+                </span>
+              </div>
+            </div>
+            ${request.status === 'pending' ? `
+              <div class="flex gap-2 ml-4">
+                <button onclick="approveRequest('${request.id}')" class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded transition">
+                  Tasdiqlash
+                </button>
+                <button onclick="rejectRequest('${request.id}')" class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition">
+                  Rad etish
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    console.log('Permission requests rendered successfully');
+    
+  } catch (error) {
+    console.error('Error loading permission requests:', error);
+  }
+}
+
+// Load notifications
+async function loadNotifications() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  try {
+    const notificationsRef = collection(db, "notifications");
+    const q = query(notificationsRef, where("userId", "==", currentUser.uid));
+    const querySnapshot = await getDocs(q);
+    
+    const notificationsList = document.getElementById('notificationsList');
+    const notifications = [];
+    
+    querySnapshot.forEach((doc) => {
+      const notification = { ...doc.data(), id: doc.id };
+      notifications.push(notification);
+    });
+    
+    // Sort by timestamp in JavaScript (newest first)
+    notifications.sort((a, b) => {
+      const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+      const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+      return timeB - timeA;
+    });
+    
+    if (notifications.length === 0) {
+      notificationsList.innerHTML = `
+        <div class="text-center py-8 text-gray-500">
+          <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5z"></path>
+          </svg>
+          <p class="text-sm">Bildirishnomalar yo'q</p>
+        </div>
+      `;
+      return;
+    }
+    
+    notificationsList.innerHTML = notifications.map(notification => {
+      const timestamp = notification.timestamp?.toDate ? notification.timestamp.toDate() : new Date(notification.timestamp);
+      const timeAgo = getTimeAgo(timestamp);
+      
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="flex-1">
+              <div class="text-sm text-gray-900 dark:text-white mb-1">
+                ${notification.message}
+              </div>
+              <div class="text-xs text-gray-400">${timeAgo}</div>
+            </div>
+            <button onclick="markNotificationAsRead('${notification.id}')" class="text-gray-400 hover:text-gray-600">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+  } catch (error) {
+    console.error('Error loading notifications:', error);
+  }
+}
+
+// Helper function to get time ago
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < 60) return 'Hozirgina';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} daqiqa oldin`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} soat oldin`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} kun oldin`;
+  
+  return date.toLocaleDateString('uz-UZ');
+}
+
+// Global functions for buttons
+window.approveRequest = async function(requestId) {
+  await updatePermissionRequest(requestId, 'approved');
+  loadPermissionRequests(); // Reload the list
+  updateMessageCountBadge(); // Update badge
+  showNotification('Ruxsat berildi!', 'success');
+};
+
+window.rejectRequest = async function(requestId) {
+  await updatePermissionRequest(requestId, 'rejected');
+  loadPermissionRequests(); // Reload the list
+  updateMessageCountBadge(); // Update badge
+  showNotification('Ruxsat rad etildi', 'info');
+};
+
+window.markNotificationAsRead = async function(notificationId) {
+  try {
+    const notificationRef = doc(db, "notifications", notificationId);
+    await updateDoc(notificationRef, { read: true });
+    loadNotifications(); // Reload the list
+    updateMessageCountBadge(); // Update badge
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+  }
+};
+
+// Function to update message count badge
+async function updateMessageCountBadge() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return;
+  
+  try {
+    // Count pending permission requests
+    const requestsRef = collection(db, "permissionRequests");
+    const requestsQuery = query(requestsRef, where("targetUserId", "==", currentUser.uid));
+    const requestsSnapshot = await getDocs(requestsQuery);
+    const pendingRequestsCount = requestsSnapshot.docs.filter(doc => doc.data().status === "pending").length;
+    
+    // Count unread notifications
+    const notificationsRef = collection(db, "notifications");
+    const notificationsQuery = query(notificationsRef, where("userId", "==", currentUser.uid));
+    const notificationsSnapshot = await getDocs(notificationsQuery);
+    const unreadNotificationsCount = notificationsSnapshot.docs.filter(doc => doc.data().read === false).length;
+    
+    const totalCount = pendingRequestsCount + unreadNotificationsCount;
+    
+    // Update or create badge
+    const messagesBtn = document.getElementById('messagesBtn');
+    if (!messagesBtn) {
+      console.log('Messages button not found, skipping badge update');
+      return; // Button doesn't exist yet
+    }
+    
+    let badge = messagesBtn.querySelector('.message-badge');
+    if (totalCount > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'message-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold';
+        messagesBtn.style.position = 'relative';
+        messagesBtn.appendChild(badge);
+      }
+      badge.textContent = totalCount > 99 ? '99+' : totalCount;
+      console.log(`Message badge updated: ${totalCount} messages`);
+    } else if (badge) {
+      badge.remove();
+      console.log('Message badge removed (no messages)');
+    }
+  } catch (error) {
+    console.error('Error updating message count badge:', error);
   }
 }
 

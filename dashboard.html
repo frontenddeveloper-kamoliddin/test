@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="shortcut icon" href="./duloloq.png" type="image/x-icon">
+  <link rel="shortcut icon" href="./duloloq.png" type="image/x-icon" onerror="this.style.display='none'">
   <style>
     .batafsil-qarzdorliklar {
       max-height: 400px; 
@@ -71,6 +71,7 @@
       <button onclick="window.location.href='bosh-sahifa.html'" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Bosh sahifa</button>
       <button id="myDebtsBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Mening qarzlarim</button>
       <button id="viewDebtsBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded transition">Qarzdor qoshish</button>
+      <button id="messagesBtn" class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded transition">Xabarlar</button>
     </div>
   </div>
  
@@ -160,6 +161,43 @@
       <div id="searchByCodeResult"></div>
       <!-- Barcha qarzlarni qidirish natijalari -->
       <div id="searchAllDebtsResult" class="mt-4"></div>
+    </div>
+  </div>
+  
+  <!-- Xabarlar modal -->
+  <div id="messagesModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeMessagesModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <h3 class="text-2xl font-bold mb-6 text-center text-orange-700">Xabarlar</h3>
+      
+      <!-- Tab navigation -->
+      <div class="flex border-b border-gray-200 mb-6">
+        <button id="permissionRequestsTab" class="px-4 py-2 text-sm font-medium text-orange-600 border-b-2 border-orange-600 active">Ruxsat so'rovlari</button>
+        <button id="notificationsTab" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Bildirishnomalar</button>
+      </div>
+      
+      <!-- Permission requests content -->
+      <div id="permissionRequestsContent" class="space-y-4">
+        <div id="permissionRequestsList" class="space-y-3 max-h-96 overflow-y-auto">
+          <!-- Permission requests will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Notifications content -->
+      <div id="notificationsContent" class="space-y-4 hidden">
+        <div id="notificationsList" class="space-y-3 max-h-96 overflow-y-auto">
+          <!-- Notifications will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Empty state -->
+      <div id="emptyMessagesState" class="text-center py-8 text-gray-500">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+        </svg>
+        <p class="text-lg font-medium">Xabarlar yo'q</p>
+        <p class="text-sm">Sizga hali hech qanday xabar kelmagan</p>
+      </div>
     </div>
   </div>
   <script type="module" src="dashboard.js"></script>
