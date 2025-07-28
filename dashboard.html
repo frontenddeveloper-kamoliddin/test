@@ -156,6 +156,11 @@
         <!-- User info will be loaded here -->
       </div>
       
+      <button id="editUsernameBtn" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition mb-4">
+        <i class="fas fa-user-edit text-indigo-500"></i>
+        <span>Username o'zgartirish</span>
+      </button>
+      
       <div class="space-y-2">
         <button onclick="window.location.href='dashboard.html'" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
           <i class="fas fa-tachometer-alt text-indigo-500"></i>
@@ -183,10 +188,7 @@
           <span id="messageBadge" class="notification-badge hidden">0</span>
         </button>
         
-        <button id="premiumBtn" class="w-full flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
-          <i class="fas fa-crown"></i>
-          <span>Premium</span>
-        </button>
+
       </div>
       
       <div class="mt-auto pt-4 border-t border-slate-200 dark:border-slate-700">
@@ -412,10 +414,10 @@
       </div>
       <div class="p-6">
         <div class="mb-4">
-          <label class="block text-slate-700 dark:text-slate-300 mb-2">Ism yoki ID bo'yicha qidiring</label>
+          <label class="block text-slate-700 dark:text-slate-300 mb-2">ID yoki Username bo'yicha qidiring</label>
           <div class="relative">
             <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-            <input id="searchByNameOrIdInput" type="text" placeholder="Qidirish..." class="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white">
+            <input id="searchByNameOrIdInput" type="text" placeholder="ID yoki username..." class="w-full pl-12 pr-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white">
           </div>
         </div>
         
@@ -437,6 +439,48 @@
       </div>
       <div class="p-6">
         <!-- Messages content will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Username Setup Modal -->
+  <div id="usernameSetupModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" style="display: none;">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-bold text-slate-800 dark:text-white">Foydalanuvchi nomini kiriting</h3>
+          <button id="closeUsernameModal" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <div class="mb-4">
+          <label class="block text-slate-700 dark:text-slate-300 mb-2">Username</label>
+          <div class="relative">
+            <input id="usernameInput" type="text" placeholder="Foydalanuvchi nomini kiriting..." 
+                   class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" 
+                   maxlength="20" autocomplete="off">
+            <div id="usernameStatus" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <!-- Status icon will appear here -->
+            </div>
+          </div>
+          <div id="usernameValidation" class="mt-2 text-sm">
+            <!-- Validation messages will appear here -->
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <div class="text-xs text-slate-500 dark:text-slate-400">
+            <p>• Kamida 4 ta harf yoki son bo'lishi kerak</p>
+            <p>• Faqat harflar, sonlar va chiziqcha (_) ishlatilishi mumkin</p>
+            <p>• Bu nom boshqa foydalanuvchilarda bo'lmasligi kerak</p>
+          </div>
+        </div>
+        
+        <button id="saveUsernameBtn" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          <i class="fas fa-save mr-2"></i> Saqlash
+        </button>
       </div>
     </div>
   </div>
