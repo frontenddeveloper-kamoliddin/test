@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="shortcut icon" href="./duloloq.png" type="image/x-icon" onerror="this.style.display='none'">
+  <style>
+    .batafsil-qarzdorliklar {
+      max-height: 400px; 
+      overflow-y: auto; 
+    }
+   
+    .batafsil-modal {
+      max-height: 70vh;   
+      overflow-y: auto;   
+      padding: 16px;     
+      background: #f5f6fa !important; /* juda och kulrang */
+    }
+    html.dark .batafsil-modal {
+  background: #232c39 !important;
+}
+.loader {
+  width: 50px;
+  aspect-ratio: 1;
+  display: grid;
+  border-radius: 50%;
+  background:
+    linear-gradient(0deg ,rgba(255, 252, 252, 0.5) 30%,#0000 0 70%,rgb(255, 249, 249) 0) 50%/8% 100%,
+    linear-gradient(90deg,rgba(255, 238, 238, 0.25) 30%,#0000 0 70%,rgba(255, 255, 255, 0.75) 0) 50%/100% 8%;
+  background-repeat: no-repeat;
+  animation: l23 1s infinite steps(12);
+}
+.loader::before,
+.loader::after {
+   content: "";
+   grid-area: 1/1;
+   border-radius: 50%;
+   background: inherit;
+   opacity: 0.915;
+   transform: rotate(30deg);
+}
+.loader::after {
+   opacity: 0.83;
+   transform: rotate(60deg);
+}
+@keyframes l23 {
+  100% {transform: rotate(1turn)}
+}
+  </style>
+</head>
+<body class="min-h-screen" style="background: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80') center center / cover no-repeat fixed;">
+
+  <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300">
+    <div class="flex items-center justify-between p-4 border-b">
+      <div>
+        <!-- Dark mode toggle button -->
+        <button id="toggleDark" class="mr-2 text-gray-500 hover:text-black transition text-xl" title="Dark mode">
+          <svg id="darkIcon" xmlns="http://www.w3.org/2000/svg" class="inline w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+          </svg>
+        </button>
+        <span id="userName" class="font-bold text-lg"></span>
+        <span id="userId" class="text-xs text-white ml-2"></span>
+      </div>
+      <button id="closeSidebar" class="text-gray-500 hover:text-red-500">&times;</button>
+    </div>
+    <div class="p-4 space-y-4">
+      <button id="logoutBtn" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition">Chiqish</button>
+      <button onclick="window.location.href='bosh-sahifa.html'" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Bosh sahifa</button>
+      <button id="myDebtsBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Mening qarzlarim</button>
+      <button id="viewDebtsBtn" class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded transition">Qarzdor qoshish</button>
+      <button id="messagesBtn" class="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded transition">Xabarlar</button>
+    </div>
+  </div>
+ 
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-40 z-20 hidden"></div>
+
+  <div class="min-h-screen flex flex-col items-center justify-start pt-6 bg-white/30 backdrop-blur-2xl">
+
+    <div class="w-full max-w-3xl flex items-center justify-between mb-6 px-4">
+      <button id="openSidebar" class="text-2xl text-gray-700">&#9776;</button>
+      <h2 class="text-2xl text-[bg-gray-200] font-bold text-center flex-1">Qarzdorlar Dashboard</h2>
+    </div>
+
+    <div class="w-full max-w-3xl mb-4 px-4">
+      <input id="searchInput" type="text" placeholder="Qarzdorni qidiring..." class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+      <!-- Barcha qarzlarni qidirish inputi -->
+      <input id="searchAllDebtsInput" type="text" placeholder="Profilega yozilgan Qarzdorlarni ko'rish" class="w-full mt-2 p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+      <div id="searchAllDebtsResult" class="mt-2"></div>
+    </div>
+
+    <form id="debtorForm" class="w-full max-w-3xl bg-gray-200 rounded-lg shadow-lg p-4 mb-6 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input id="debtorName" type="text" placeholder="Ism" required class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+        <input id="debtorProduct" type="text" placeholder="Mahsulot nomi"  class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+        <input id="debtorCount" type="number" minlength=""  placeholder="Mahsulot soni"  class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+        <input id="debtorPrice" type="number" min="1" placeholder="Mahsulot narxi" required class="p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+      </div>
+      
+      <input id="debtorNote" type="text" placeholder="Qo'shimcha izoh (ixtiyoriy)" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900">
+      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Qarzdor qo'shish</button>
+    </form>
+
+    <div class="w-full max-w-3xl flex flex-col md:flex-row gap-4 mb-4 px-4">
+      <div class="flex-1 bg-blue-100 rounded-lg p-4 text-center">
+        <div class="text-lg font-bold">Umumiy qo'shilgan</div>
+        <div id="totalAdded" class="text-2xl font-bold mt-2">0 so'm</div>
+      </div>
+      <div class="flex-1 bg-red-100 rounded-lg p-4 text-center">
+        <div class="text-lg font-bold">Umumiy ayirilgan</div>
+        <div id="totalSubtracted" class="text-2xl font-bold mt-2">0 so'm</div>
+      </div>
+      <div class="flex-1 bg-green-100 rounded-lg p-4 text-center">
+        <div class="text-lg font-bold">Umumiy qarzdorlik</div>
+        <div id="totalDebt" class="text-2xl font-bold mt-2">0 so'm</div>
+      </div>
+    </div>
+     <div class="loader z-[1] absolute left-1/2 top-[580px]"></div>
+
+    <!-- Loader ustida chiqadigan "Qarzdorlar topilmadi" -->
+    <div
+      id="noDebtorsFound"
+      class="hidden absolute left-1/2 top-[580px] -translate-x-1/2 z-[10] bg-white/90 text-gray-700 rounded-xl text-2xl font-bold shadow-lg border border-gray-300 flex items-center justify-center"
+      style="height: 100px; width: 420px; letter-spacing: 1px;"
+    >
+      <svg class="w-8 h-8 mr-4 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path stroke="currentColor" stroke-width="2" d="M8 12h8M12 8v8"/>
+      </svg>
+      Qarzdorlar topilmadi
+    </div>
+
+    <div id="debtorsList" class="w-full max-w-3xl space-y-6 px-4 mb-10"></div>
+    <div class="batafsil-qarzdorliklar"></div>
+  </div>
+ 
+  <div id="debtorModal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+  <div id="myDebtsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeMyDebtsModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <h3 class="text-2xl font-bold mb-6 text-center text-blue-700">Mening qarzlarim</h3>
+      
+      <div id="myDebtsList" class="space-y-4"></div>
+    </div>
+  </div>
+  <!-- Qarzlar ko'rish modal -->
+  <div id="viewDebtsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeViewDebtsModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <h3 class="text-2xl font-bold mb-6 text-center text-purple-700">Qarzlarni qidirish</h3>
+      <input id="searchByNameOrIdInput" type="text" placeholder="Ism yoki ID bo'yicha qidiring..." class="w-full p-3 border border-gray-300 rounded-lg text-gray-900 mb-4 focus:ring-2 focus:ring-purple-400">
+      <!-- Kod orqali qidirish inputidan keyin joylashtiring -->
+      <div id="searchedCodesWrap" class="flex flex-wrap mt-2"></div>
+      <div id="searchByCodeResult"></div>
+      <!-- Barcha qarzlarni qidirish natijalari -->
+      <div id="searchAllDebtsResult" class="mt-4"></div>
+    </div>
+  </div>
+  
+  <!-- Xabarlar modal -->
+  <div id="messagesModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative batafsil-modal border border-gray-200">
+      <button id="closeMessagesModal" class="absolute top-3 right-3 text-3xl text-gray-400 hover:text-red-500 transition">&times;</button>
+      <h3 class="text-2xl font-bold mb-6 text-center text-orange-700">Xabarlar</h3>
+      
+      <!-- Tab navigation -->
+      <div class="flex border-b border-gray-200 mb-6">
+        <button id="permissionRequestsTab" class="px-4 py-2 text-sm font-medium text-orange-600 border-b-2 border-orange-600 active">Ruxsat so'rovlari</button>
+        <button id="notificationsTab" class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Bildirishnomalar</button>
+      </div>
+      
+      <!-- Permission requests content -->
+      <div id="permissionRequestsContent" class="space-y-4">
+        <div id="permissionRequestsList" class="space-y-3 max-h-96 overflow-y-auto">
+          <!-- Permission requests will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Notifications content -->
+      <div id="notificationsContent" class="space-y-4 hidden">
+        <div id="notificationsList" class="space-y-3 max-h-96 overflow-y-auto">
+          <!-- Notifications will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Empty state -->
+      <div id="emptyMessagesState" class="text-center py-8 text-gray-500">
+        <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+        </svg>
+        <p class="text-lg font-medium">Xabarlar yo'q</p>
+        <p class="text-sm">Sizga hali hech qanday xabar kelmagan</p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="dashboard.js"></script>
+  <script>
+  // Dark mode toggle
+  const toggleBtn = document.getElementById('toggleDark');
+  const html = document.documentElement;
+  toggleBtn.addEventListener('click', () => {
+    html.classList.toggle('dark');
+    // Change icon (optional)
+    const icon = document.getElementById('darkIcon');
+    if (html.classList.contains('dark')) {
+      icon.innerHTML = `<path id="sunIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.07l-.71.71M21 12h-1M4 12H3m16.66 6.66l-.71-.71M4.05 4.93l-.71-.71M12 5a7 7 0 100 14 7 7 0 000-14z" />`;
+    } else {
+      icon.innerHTML = `<path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />`;
+    }
+  });
+</script>
+<style>
+  /* Tailwind dark mode support - improved design */
+  html.dark body {
+    background: linear-gradient(135deg, #181e29 0%, #232c39 100%) !important;
+  }
+  html.dark #sidebar {
+    background: #232c39 !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+    border-right: 1.5px solid #374151 !important;
+  }
+  html.dark .border-b, html.dark .border {
+    border-color: #374151 !important;
+  }
+  html.dark .bg-white,
+  html.dark .bg-gray-200,
+  html.dark .bg-blue-100,
+  html.dark .bg-red-100,
+  html.dark .bg-green-100 {
+    background: rgba(35,44,57,0.95) !important;
+    color: #f3f4f6 !important;
+  }
+  html.dark .rounded-xl,
+  html.dark .rounded-lg,
+  html.dark .rounded-2xl {
+    box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.25) !important;
+    border: 1.5px solid #374151 !important;
+  }
+  html.dark .text-gray-900, html.dark .text-gray-700 {
+    color: #fff !important;
+  }
+  html.dark .text-gray-500, html.dark .text-gray-600 {
+    color: #cbd5e1 !important;
+  }
+  html.dark .text-blue-700, html.dark .text-blue-600 {
+    color: #60a5fa !important;
+  }
+  html.dark .text-purple-700 {
+    color: #a78bfa !important;
+  }
+  html.dark .text-red-400 {
+    color: #f87171 !important;
+  }
+  html.dark input, html.dark textarea {
+    background: #232c39 !important;
+    color: #fff !important;
+    border-color: #374151 !important;
+  }
+  html.dark input:focus, html.dark textarea:focus {
+    outline: 2px solid #60a5fa !important;
+    border-color: #60a5fa !important;
+  }
+  html.dark .shadow-lg, html.dark .shadow-2xl {
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+  }
+  html.dark .bg-blue-500 {
+    background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%) !important;
+  }
+  html.dark .bg-red-500 {
+    background: linear-gradient(90deg, #dc2626 0%, #f87171 100%) !important;
+  }
+  html.dark .bg-purple-500 {
+    background: linear-gradient(90deg, #a21caf 0%, #a78bfa 100%) !important;
+  }
+  html.dark .bg-green-500 {
+    background: linear-gradient(90deg, #059669 0%, #6ee7b7 100%) !important;
+  }
+  html.dark .bg-blue-600 { background: #2563eb !important; }
+  html.dark .bg-red-600 { background: #dc2626 !important; }
+  html.dark .bg-purple-600 { background: #a21caf !important; }
+  html.dark .bg-green-600 { background: #059669 !important; }
+  html.dark .text-white { color: #f3f4f6 !important; }
+  html.dark .font-mono { letter-spacing: 1px; }
+  html.dark .loader {
+    background: linear-gradient(0deg,rgba(255,255,255,0.08) 30%,#0000 0 70%,#fff1 0) 50%/8% 100%,
+                linear-gradient(90deg,rgba(255,255,255,0.08) 30%,#0000 0 70%,#fff2 0) 50%/100% 8%;
+  }
+  html.dark #noDebtorsFound {
+  background: rgba(35,44,57,0.98) !important;
+  color: #fff !important;
+  backdrop-filter: blur(8px);
+}
+</style>
+</body>
+</html>

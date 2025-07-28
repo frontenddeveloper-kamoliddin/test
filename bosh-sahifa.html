@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+  <link rel="shortcut icon" href="./img/ChatGPT Image Jun 30, 2025, 01_04_34 PM.png" type="image/x-icon">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    .id-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(45deg, #4a90e2, #6bb9f0);
+            border-bottom-left-radius: 100%;
+            z-index: 1;
+        }
+        .name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+    .batafsil-qarzdorliklar {
+      max-height: 400px; 
+      overflow-y: auto; 
+    }
+   
+    .batafsil-modal {
+      max-height: 70vh;   
+      overflow-y: auto;   
+      padding: 16px;     
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #181f2a;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .stat-card {
+      min-width: 220px;
+      min-height: 140px;
+      border-radius: 24px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+      padding: 36px 20px 28px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0;
+      margin-top: 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1.5px solid rgba(255,255,255,0.08);
+    }
+    .stat-card:hover {
+      transform: translateY(-6px) scale(1.04);
+      box-shadow: 0 16px 40px 0 rgba(31, 38, 135, 0.22);
+    }
+    .stat-blue {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: #fff;
+    }
+    .stat-red {
+      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      color: #fff;
+    }
+    .stat-green {
+      background: linear-gradient(135deg, #22c55e 0%, #166534 100%);
+      color: #fff;
+    }
+    .stat-yellow {
+      background: linear-gradient(135deg, #f59e42 0%, #b45309 100%);
+      color: #fff;
+    }
+    .stat-value {
+      font-size: 2.8rem;
+      font-weight: bold;
+      margin-top: 12px;
+      margin-bottom: 0;
+      letter-spacing: 1.5px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    }
+    .chart-card {
+      background: linear-gradient(135deg, #232b36 60%, #232b36 100%);
+      border-radius: 22px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+      padding: 28px 18px 18px 18px;
+      margin-bottom: 0;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .chart-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 18px;
+    }
+    .debtors-table-card {
+      background: linear-gradient(135deg, #2d3543 60%, #232b36 100%);
+      border-radius: 28px;
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+      padding: 32px 18px 24px 18px;
+      margin-bottom: 0;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .debtors-table-card .chart-title {
+      color: #fff;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 22px;
+    }
+    .debtors-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      background: rgba(255,255,255,0.01);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .debtors-table thead tr {
+      background: rgba(255,255,255,0.08);
+    }
+    .debtors-table th, .debtors-table td {
+      padding: 14px 18px;
+      font-size: 1.08rem;
+      text-align: left;
+    }
+    .debtors-table th {
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #374151;
+    }
+    .debtors-table td {
+      color: #e5e7eb;
+      border-bottom: 1px solid #2d3543;
+    }
+    .debtors-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .debtors-table tbody tr:hover {
+      background: rgba(59,130,246,0.10);
+      transition: background 0.2s;
+    }
+    @media (max-width: 900px) {
+      .stat-card { min-width: 140px; min-height: 100px; padding: 16px 6px; }
+      .stat-value { font-size: 1.5rem; }
+      .chart-title { font-size: 1.1rem; }
+      .debtors-table th, .debtors-table td { padding: 8px 6px; font-size: 0.98rem; }
+      .debtors-table-card { padding: 16px 4px; }
+    }
+    .id-number {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        .content {
+            position: relative;
+            z-index: 2;
+        }
+        .id-card {
+            width: 300px;
+            height: 100px;
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen">
+
+  <div id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-30 transform -translate-x-full transition-transform duration-300">
+    <div class="flex items-center justify-between p-4 border-b">
+      <div>
+        <!-- Dark mode toggle button -->
+        <button id="toggleDark" class="mr-2 text-gray-500 hover:text-black transition text-xl" title="Dark mode">
+          <svg id="darkIcon" xmlns="http://www.w3.org/2000/svg" class="inline w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+          </svg>
+        </button>
+        <span id="userName" class="font-bold text-lg"></span>
+        <span id="userId" class="text-xs text-white ml-2"></span>
+      </div>
+      <button id="closeSidebar" class="text-gray-500 hover:text-red-500">&times;</button>
+    </div>
+    <div class="p-4 space-y-4">
+      <button id="logoutBtn" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition">Chiqish</button>
+      <button onclick="window.location.href='dashboard.html'" class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Bosh sahifa</button>
+      
+    </div>
+  </div>
+ 
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-40 z-20 hidden"></div>
+
+  <div class="min-h-screen flex flex-col items-center justify-start pt-6">
+
+    <div class="w-full max-w-5xl flex items-center justify-between mb-8 px-4">
+      <button id="openSidebar" class="text-3xl text-gray-200 hover:text-white focus:outline-none transition">&#9776;</button>
+      <h2 class="text-3xl font-bold text-white text-center flex-1" style="letter-spacing:1px;">Qarzdorlar Dashboard</h2>
+      <div style="width:40px;"></div>
+    </div>
+    <div class="w-full max-w-5xl flex flex-col md:flex-row gap-6 mb-6 px-4">
+      <div class="flex-1 stat-card stat-blue text-center">
+        <div>Umumiy qo‘shilgan</div>
+        <div id="totalAdded" class="stat-value">0 so‘m</div>
+      </div>
+      <div class="flex-1 stat-card stat-red text-center">
+        <div>Umumiy ayirilgan</div>
+        <div id="totalSubtracted" class="stat-value">0 so‘m</div>
+      </div>
+      <div class="flex-1 stat-card stat-green text-center">
+        <div>Umumiy qarzdorlik</div>
+        <div id="totalDebt" class="stat-value">0 so‘m</div>
+      </div>
+      <div class="flex-1 stat-card stat-yellow text-center">
+        <div>Qarzdorlar soni</div>
+        <div id="totalDebtors" class="stat-value">0</div>
+      </div>
+    </div>
+    <div class="w-full max-w-5xl flex flex-col md:flex-row gap-6 mb-8 px-4">
+      <div class="flex-1 chart-card">
+        <div class="chart-title">Qarzlar harakati (so‘nggi 7 kun)</div>
+        <canvas id="debtChart" height="180"></canvas>
+      </div>
+      <div class="flex-1 chart-card">
+        <div class="chart-title">Raiting: Eng ko‘p qarz olganlar</div>
+        <canvas id="ratingChart" height="180"></canvas>
+      </div>
+    </div>
+    <div class="w-full max-w-5xl px-4 mb-10">
+      <div class="debtors-table-card">
+        <div class="chart-title">Eng uzoqdan beri bermayotgan qarzdorlar</div>
+        <div class="overflow-x-auto">
+          <table class="debtors-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Ism</th>
+                <th>Umumiy qarz</th>
+                <th>Oxirgi to‘lov/qo‘shilgan sana</th>
+              </tr>
+            </thead>
+            <tbody id="longestDebtorsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="w-full max-w-5xl px-4 mb-10">
+      <div class="debtors-table-card">
+        <div class="chart-title">Eng ko‘p qarz olgan insonlar</div>
+        <div class="overflow-x-auto">
+          <table class="debtors-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Ism</th>
+                <th>Umumiy qarz</th>
+              </tr>
+            </thead>
+            <tbody id="topDebtorsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+   
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module" src="bosh-sahifa.js"></script>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>

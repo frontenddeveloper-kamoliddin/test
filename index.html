@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login/Register</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="shortcut icon" href="./dulaloq.png" type="image/x-icon">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #181a2a;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    #particles-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      display: block;
+    }
+    .center-content {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .form-box {
+      background: rgba(30, 32, 60, 0.93);
+      padding: 2.2rem 2.2rem 1.7rem 2.2rem;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px 0 #0005;
+      min-width: 320px;
+      max-width: 350px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: box-shadow 0.3s, transform 0.3s;
+      position: relative;
+    }
+    .form-title {
+      color: #fff;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .form-box input {
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      border: none;
+      background: #fff;
+      color: #222;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      outline: none;
+      transition: box-shadow 0.2s;
+      box-shadow: 0 1px 4px #0001;
+    }
+    .form-box input:focus {
+      box-shadow: 0 2px 8px #8b5cf655;
+    }
+    .form-box button[type="submit"] {
+      padding: 0.7rem 0;
+      border-radius: 6px;
+      border: none;
+      background: linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      margin-bottom: 0.2rem;
+      width: 100%;
+      box-shadow: 0 2px 8px #8b5cf633;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    }
+    .form-box button[type="submit"]:hover {
+      background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+      box-shadow: 0 4px 16px #8b5cf655;
+      transform: translateY(-2px) scale(1.03);
+    }
+    .switch-btn {
+      background: none;
+      color: #8b5cf6;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      text-decoration: underline;
+      width: 100%;
+      transition: color 0.2s;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    .switch-btn:hover {
+      color: #6366f1;
+      text-decoration: none;
+    }
+    .error-msg {
+      color: #ff6b6b;
+      text-align: center;
+      font-size: 1rem;
+      min-height: 1.2em;
+      margin-bottom: 0.2rem;
+    }
+    @media (max-width: 500px) {
+      .form-box {
+        min-width: 0;
+        max-width: 98vw;
+        padding: 1.2rem 0.5rem 1rem 0.5rem;
+      }
+      .form-title {
+        font-size: 1.2rem;
+      }
+    }
+    .password-wrapper {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+    .password-wrapper input[type="password"],
+    .password-wrapper input[type="text"] {
+      width: 100%;
+      padding-right: 2.5em;
+      box-sizing: border-box;
+      margin-bottom: 0;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 0.7em;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 1.4em;
+      color: #8b5cf6;
+      display: flex;
+      align-items: center;
+      background: transparent;
+      border: none;
+      padding: 0;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particles-canvas"></canvas>
+  <div class="center-content">
+    <!-- Login form -->
+    <form class="form-box" id="loginForm" autocomplete="off">
+      <div class="form-title">Login</div>
+      <input type="email" id="loginEmail" placeholder="Email" required autocomplete="username" />
+      <div class="password-wrapper">
+        <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" />
+        <span class="toggle-password" id="toggleLoginPassword">
+          <svg id="loginEyeOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/></svg>
+          <svg id="loginEyeClosed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/><path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/></svg>
+        </span>
+      </div>
+      <button type="submit">Login</button>
+      <button type="button" class="switch-btn" id="showRegister">Create an account</button>
+      <div class="error-msg" id="loginError"></div>
+    </form>
+    <!-- Register form -->
+    <form class="form-box" id="registerForm" autocomplete="off" style="display:none;">
+      <div class="form-title">Register</div>
+      <input type="text" id="registerName" placeholder="Name" required autocomplete="username" />
+      <input type="email" id="registerEmail" placeholder="Email" required autocomplete="email" />
+      <div class="password-wrapper">
+        <input type="password" id="registerPassword" placeholder="Password" required autocomplete="new-password" />
+        <span class="toggle-password" id="toggleRegisterPassword">
+          <svg id="registerEyeOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/></svg>
+          <svg id="registerEyeClosed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/><path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/></svg>
+        </span>
+      </div>
+      <div class="password-wrapper">
+        <input type="password" id="registerPasswordRepeat" placeholder="Repeat password" required autocomplete="new-password" />
+        <span class="toggle-password" id="toggleRegisterPasswordRepeat">
+          <svg id="registerRepeatEyeOpen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/></svg>
+          <svg id="registerRepeatEyeClosed" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-eye-off" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.81 21.81 0 0 1 5.06-6.06"/><path d="M1 1l22 22"/><path d="M9.53 9.53A3 3 0 0 0 12 15a3 3 0 0 0 2.47-5.47"/><path d="M14.47 14.47A3 3 0 0 1 12 9a3 3 0 0 1-2.47 5.47"/></svg>
+        </span>
+      </div>
+      <button type="submit">Register</button>
+      <button type="button" class="switch-btn" id="showLogin">Already have an account?</button>
+      <div class="error-msg" id="registerError"></div>
+    </form>
+  </div>
+  <!-- Firebase va auth  -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+    // Firebase konfiguratsiya
+    const firebaseConfig = {
+      apiKey: "AIzaSyACHEuejKVniBAcYExQxk23A9QD84bUaB4",
+      authDomain: "new-project-6075a.firebaseapp.com",
+      projectId: "new-project-6075a",
+      storageBucket: "new-project-6075a.appspot.com",
+      messagingSenderId: "974403904500",
+      appId: "1:974403904500:web:5d4edb5db8f5432cbdcfa1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const showRegister = document.getElementById("showRegister");
+    const showLogin = document.getElementById("showLogin");
+    const loginError = document.getElementById("loginError");
+    const registerError = document.getElementById("registerError");
+
+ 
+    showRegister.onclick = () => {
+      loginForm.style.display = "none";
+      registerForm.style.display = "flex";
+      loginError.innerText = "";
+      registerError.innerText = "";
+    };
+    showLogin.onclick = () => {
+      registerForm.style.display = "none";
+      loginForm.style.display = "flex";
+      loginError.innerText = "";
+      registerError.innerText = "";
+    };
+
+    // Login
+    loginForm.onsubmit = (e) => {
+      e.preventDefault();
+      loginError.innerText = "";
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+      signInWithEmailAndPassword(auth, email, password)
+        .then(() => window.location.href = "bosh-sahifa.html")
+        .catch(err => loginError.innerText = err.message);
+    };
+
+    // Register
+    registerForm.onsubmit = (e) => {
+      e.preventDefault();
+      registerError.innerText = "";
+      const name = document.getElementById("registerName").value;
+      const email = document.getElementById("registerEmail").value;
+      const password = document.getElementById("registerPassword").value;
+      const passwordRepeat = document.getElementById("registerPasswordRepeat").value;
+      if (!name) {
+        registerError.innerText = "Name is required!";
+        return;
+      }
+      if (password !== passwordRepeat) {
+        registerError.innerText = "Parollar bir xil bo‘lishi kerak!";
+        return;
+      }
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          // Ismni Firebase profiliga yozish
+          return updateProfile(userCredential.user, { displayName: name });
+        })
+        .then(() => window.location.href = "bosh-sahifa.html")
+        .catch(err => registerError.innerText = err.message);
+    };
+
+    // Parolni ko‘rsatish/yashirish (SVG icon bilan)
+    function setupPasswordToggle(inputId, toggleId, eyeOpenId, eyeClosedId) {
+      const input = document.getElementById(inputId);
+      const toggle = document.getElementById(toggleId);
+      const eyeOpen = document.getElementById(eyeOpenId);
+      const eyeClosed = document.getElementById(eyeClosedId);
+      let visible = false;
+      toggle.onclick = () => {
+        visible = !visible;
+        input.type = visible ? "text" : "password";
+        eyeOpen.style.display = visible ? "none" : "inline";
+        eyeClosed.style.display = visible ? "inline" : "none";
+      };
+    }
+    setupPasswordToggle("loginPassword", "toggleLoginPassword", "loginEyeOpen", "loginEyeClosed");
+    setupPasswordToggle("registerPassword", "toggleRegisterPassword", "registerEyeOpen", "registerEyeClosed");
+    setupPasswordToggle("registerPasswordRepeat", "toggleRegisterPasswordRepeat", "registerRepeatEyeOpen", "registerRepeatEyeClosed");
+  </script>
+
+  <script>
+
+    const canvas = document.getElementById('particles-canvas');
+    const ctx = canvas.getContext('2d');
+    let w = window.innerWidth;
+    let h = window.innerHeight;
+    canvas.width = w;
+    canvas.height = h;
+
+    const particles = [];
+    const PARTICLE_COUNT = 350;
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const radius = 120 + Math.random() * 220;
+      particles.push({
+        x: w/2 + Math.cos(angle) * radius,
+        y: h/2 + Math.sin(angle) * radius,
+        r: Math.random() * 3 + 1.5,
+        dx: (Math.random() - 0.5) * 0.25,
+        dy: (Math.random() - 0.5) * 0.25,
+        color: `rgba(139,92,246,${Math.random() * 0.7 + 0.3})`
+      });
+    }
+
+    function drawParticles() {
+      ctx.clearRect(0, 0, w, h);
+      for (let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+ 
+        p.x += p.dx;
+
+        if (p.x < 0 || p.x > w) p.dx *= -1;
+        if (p.y < 0 || p.y > h) p.dy *= -1;
+      }
+      requestAnimationFrame(drawParticles);
+    }
+    drawParticles();
+
+
+    window.addEventListener('resize', () => {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w;
+      canvas.height = h;
+    });
+  </script>
+</body>
+</html>
