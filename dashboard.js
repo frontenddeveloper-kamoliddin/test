@@ -816,9 +816,6 @@ async function showSidebarUser(user) {
     });
   }
   
-  // Check premium status
-  const isPremium = await checkPremiumStatus();
-  
   // Update sidebar UI
   const sidebarUserDiv = document.getElementById("sidebarUserInfo");
   if (sidebarUserDiv) {
@@ -828,21 +825,11 @@ async function showSidebarUser(user) {
           <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
             ${userName.charAt(0)}
           </div>
-          ${isPremium ? `
-            <div class="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-              <i class="fas fa-crown text-xs text-white"></i>
-            </div>
-          ` : ''}
         </div>
         <div>
           <div class="font-bold text-lg flex items-center gap-2">
             <span class="truncate max-w-[120px]">${userName}</span>
             <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
-            ${isPremium ? `
-              <span class="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs rounded-full font-bold">
-                PREMIUM
-              </span>
-            ` : ''}
           </div>
           <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
         </div>
@@ -861,34 +848,7 @@ function generateUserCode() {
   return code;
 }
 
-// Check premium status
-async function checkPremiumStatus() {
-  const user = auth.currentUser;
-  if (!user) return false;
-  
-  try {
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-    
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      if (userData.isPremium && userData.premiumExpiresAt) {
-        const expiresAt = userData.premiumExpiresAt.toDate ? userData.premiumExpiresAt.toDate() : new Date(userData.premiumExpiresAt);
-        if (expiresAt > new Date()) {
-          return true;
-        } else {
-          // Premium expired, update status
-          await updateDoc(userRef, { isPremium: false });
-          return false;
-        }
-      }
-    }
-    return false;
-  } catch (error) {
-    console.error('Error checking premium status:', error);
-    return false;
-  }
-}
+
 
 // Initialize the application
 function initApp() {
@@ -910,7 +870,7 @@ function initApp() {
     document.getElementById('messagesModal').classList.remove('hidden');
     loadMessages();
   });
-  document.getElementById('premiumBtn')?.addEventListener('click', showPremiumModal);
+
   document.getElementById('notificationBtn')?.addEventListener('click', toggleNotifications);
   
   // Setup search functionality
@@ -994,16 +954,7 @@ async function addUserWithPermission(userToAdd) {
     return;
   }
   
-  // Check if user is premium
-  const isPremium = await checkPremiumStatus();
-  if (isPremium) {
-    // Direct add for premium users
-    addedSearchUsers.push(userToAdd);
-    renderAddedSearchUsers();
-    saveAddedSearchUsers();
-    showNotification(`${userToAdd.name} muvaffaqiyatli qo'shildi!`, 'success');
-    return;
-  }
+
   
   // Check if user owns the target user
   if (userToAdd.userId === currentUser.uid || userToAdd.id === currentUser.uid) {
@@ -1060,14 +1011,7 @@ function showPermissionRequestModal(userToAdd, requestingUser) {
           <button id="requestPermissionBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold transition">
             Ruxsat so'rash
           </button>
-          <button id="premiumUpgradeBtn" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-4 py-3 rounded-lg font-semibold transition">
-            <div class="flex items-center justify-center gap-2">
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-              </svg>
-              Premium olish
-            </div>
-          </button>
+
           <button id="cancelPermissionBtn" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-3 rounded-lg font-semibold transition">
             Bekor qilish
           </button>
@@ -1080,7 +1024,7 @@ function showPermissionRequestModal(userToAdd, requestingUser) {
     // Event listeners
     const closeBtn = modal.querySelector('#closePermissionModal');
     const requestBtn = modal.querySelector('#requestPermissionBtn');
-    const premiumBtn = modal.querySelector('#premiumUpgradeBtn');
+
     const cancelBtn = modal.querySelector('#cancelPermissionBtn');
 
     const closeModal = () => {
@@ -1099,11 +1043,7 @@ function showPermissionRequestModal(userToAdd, requestingUser) {
       resolve(result);
     };
 
-    premiumBtn.onclick = () => {
-      closeModal();
-      showPremiumModal();
-      resolve({ granted: false, reason: 'premium_required' });
-    };
+
   });
 }
 
@@ -1322,27 +1262,119 @@ async function loadMyDebts() {
       if (myDebts.length === 0) {
         myDebtsList.innerHTML = '<div class="text-center text-gray-500">Sizga yozilgan qarzlar topilmadi.</div>';
       } else {
-        myDebtsList.innerHTML = myDebts.map(d => {
-          const historyHtml = (d.history || []).map(h => {
+        // Har bir qarz yozgan odamning qarzlari alohida guruhlash
+        const debtsByAuthor = {};
+        let totalAdded = 0;
+        let totalSubtracted = 0;
+        
+        myDebts.forEach(d => {
+          (d.history || []).forEach(h => {
             const authorId = h.authorId || d.userId;
-            const authorName = usersMap[authorId] || authorId || "-";
+            const authorName = usersMap[authorId] || authorId || "Noma'lum";
+            
+            if (!debtsByAuthor[authorName]) {
+              debtsByAuthor[authorName] = [];
+            }
+            
+            debtsByAuthor[authorName].push({
+              ...h,
+              debtorId: d.id,
+              debtorCode: d.code || d.userId
+            });
+            
+            if (h.type === "add") {
+              totalAdded += h.amount || 0;
+            } else if (h.type === "sub") {
+              totalSubtracted += h.amount || 0;
+            }
+          });
+        });
+        
+        // Umumiy yig'indi
+        const totalDebt = totalAdded - totalSubtracted;
+        
+        let html = `
+          <div class="mb-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+            <h3 class="font-bold text-lg mb-2 text-blue-800 dark:text-blue-200">Umumiy Qarzlar</h3>
+            <div class="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Jami qo'shilgan</div>
+                <div class="font-bold text-green-600 dark:text-green-400">${formatMoney(totalAdded)}</div>
+              </div>
+              <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Jami ayirilgan</div>
+                <div class="font-bold text-red-600 dark:text-red-400">${formatMoney(totalSubtracted)}</div>
+              </div>
+              <div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">Qolgan qarz</div>
+                <div class="font-bold ${totalDebt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}">${formatMoney(totalDebt)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Har bir odamning qarzlari alohida ko'rsatish
+        Object.keys(debtsByAuthor).forEach(authorName => {
+          const authorDebts = debtsByAuthor[authorName];
+          let authorTotalAdded = 0;
+          let authorTotalSubtracted = 0;
+          
+          const authorDebtsHtml = authorDebts.map(h => {
+            if (h.type === "add") authorTotalAdded += h.amount || 0;
+            if (h.type === "sub") authorTotalSubtracted += h.amount || 0;
+            
+            // Mahsulot ma'lumotlarini olish
+            const productInfo = h.product ? `
+              <div class="text-xs text-gray-500 mt-1">
+                <span class="font-medium">Mahsulot:</span> ${h.product}
+              </div>
+            ` : '';
+            
+            const quantityInfo = h.quantity ? `
+              <div class="text-xs text-gray-500">
+                <span class="font-medium">Miqdori:</span> ${h.quantity} ta
+              </div>
+            ` : '';
+            
+            const priceInfo = h.price ? `
+              <div class="text-xs text-gray-500">
+                <span class="font-medium">Narxi:</span> ${formatMoney(h.price)} so'm
+              </div>
+            ` : '';
+            
             return `
-              <div class="p-2 rounded mb-1 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
-                <b>${h.type === "add" ? "+" : "-"}${h.amount} so'm</b>
-                <span class="text-xs text-gray-500 ml-2">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
-                <div class="text-xs text-gray-400">${h.note || ""}</div>
-                <div class="text-xs text-gray-500">Kim yozgan: <b>${authorName}</b></div>
+              <div class="p-3 rounded mb-2 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
+                <div class="flex justify-between items-start mb-1">
+                  <b class="text-lg">${h.type === "add" ? "+" : "-"}${h.amount} so'm</b>
+                  <span class="text-xs text-gray-500">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
+                </div>
+                ${productInfo}
+                ${quantityInfo}
+                ${priceInfo}
+                <div class="text-xs text-gray-400 mt-1">${h.note || ""}</div>
+                <div class="text-xs text-gray-500 mt-1">ID: <b>${h.debtorCode}</b></div>
               </div>
             `;
           }).join("");
           
-          return `
+          const authorTotalDebt = authorTotalAdded - authorTotalSubtracted;
+          
+          html += `
             <div class="p-3 rounded bg-gray-100 dark:bg-gray-700 mb-4">
-              <div class="text-xs text-gray-400 mb-1">ID: <b>${d.code || d.userId || "-"}</b></div>
-              <div class="mt-2">${historyHtml || "<span class='text-gray-400'>Tarix yo'q</span>"}</div>
+              <div class="flex justify-between items-center mb-2">
+                <h4 class="font-bold text-gray-800 dark:text-white">${authorName}</h4>
+                <div class="text-sm">
+                  <span class="text-green-600 dark:text-green-400">+${formatMoney(authorTotalAdded)}</span>
+                  <span class="text-red-600 dark:text-red-400"> -${formatMoney(authorTotalSubtracted)}</span>
+                  <span class="font-bold ${authorTotalDebt > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}"> = ${formatMoney(authorTotalDebt)}</span>
+                </div>
+              </div>
+              <div class="mt-2">${authorDebtsHtml}</div>
             </div>
           `;
-        }).join("");
+        });
+        
+        myDebtsList.innerHTML = html;
       }
     }
   } catch (error) {
@@ -1528,7 +1560,7 @@ async function loadNotifications() {
     const notifications = [
       { id: 1, title: "Yangi qarzdor", message: "Sizga yangi qarzdor qo'shildi", time: "5 min oldin", read: false },
       { id: 2, title: "To'lov eslatma", message: "Ali Valiyevning qarz muddati tugayapti", time: "1 soat oldin", read: true },
-      { id: 3, title: "Premium taklif", message: "Premium a'zolik 50% chegirmada", time: "1 kun oldin", read: true }
+      { id: 3, title: "Yangi funksiya", message: "Yangi funksiyalar qo'shildi", time: "1 kun oldin", read: true }
     ];
     
     dropdown.innerHTML = '';
@@ -1572,65 +1604,7 @@ async function loadNotifications() {
   }, 1000);
 }
 
-// Show premium modal
-function showPremiumModal() {
-  const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
-  modal.innerHTML = `
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-8 relative">
-      <button class="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
-        <i class="fas fa-times"></i>
-      </button>
-      
-      <div class="text-center mb-6">
-        <div class="w-20 h-20 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center text-white text-3xl mx-auto mb-4">
-          <i class="fas fa-crown"></i>
-        </div>
-        <h3 class="text-2xl font-bold text-slate-800 dark:text-white mb-2">Premium A'zolik</h3>
-        <p class="text-slate-600 dark:text-slate-400">Cheksiz imkoniyatlar faqat premium a'zolar uchun</p>
-      </div>
-      
-      <div class="space-y-4 mb-6">
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-100 dark:bg-slate-700">
-          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-            <i class="fas fa-check"></i>
-          </div>
-          <span class="text-slate-800 dark:text-white">Cheksiz qarzdor qo'shish</span>
-        </div>
-        
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-100 dark:bg-slate-700">
-          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-            <i class="fas fa-check"></i>
-          </div>
-          <span class="text-slate-800 dark:text-white">Ruxsatsiz qo'shish</span>
-        </div>
-        
-        <div class="flex items-center gap-3 p-4 rounded-lg bg-slate-100 dark:bg-slate-700">
-          <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-            <i class="fas fa-check"></i>
-          </div>
-          <span class="text-slate-800 dark:text-white">Barcha funksiyalar</span>
-        </div>
-      </div>
-      
-      <div class="text-center">
-        <div class="text-4xl font-bold text-slate-800 dark:text-white mb-2">99,000 so'm</div>
-        <div class="text-sm text-slate-500 dark:text-slate-400 mb-6">oyiga</div>
-        
-        <button class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white px-6 py-4 rounded-lg font-bold text-lg transition">
-          Premium olish
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  
-  // Close modal
-  modal.querySelector('button').addEventListener('click', () => {
-    modal.remove();
-  });
-}
+
 
 // Open debtor modal
 function openDebtorModal(debtor) {
