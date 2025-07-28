@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Premium Ma'lumotlarni O'chirish</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+    <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">
+      Premium Ma'lumotlarni O'chirish
+    </h1>
+    
+    <div class="space-y-4">
+      <button id="checkBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition">
+        Premium ma'lumotlarni tekshirish
+      </button>
+      
+      <button id="removeBtn" class="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-3 rounded-lg font-medium transition">
+        Premium ma'lumotlarni o'chirish
+      </button>
+    </div>
+    
+    <div id="result" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
+      <h3 class="font-bold text-gray-800 mb-2">Natija:</h3>
+      <div id="resultText" class="text-sm text-gray-600"></div>
+    </div>
+    
+    <div class="mt-6 text-center">
+      <a href="dashboard.html" class="text-blue-500 hover:text-blue-600 text-sm">
+        Dashboard'ga qaytish
+      </a>
+    </div>
+  </div>
+  
+  <script type="module" src="remove-premium-data.js"></script>
+  <script>
+    document.getElementById('checkBtn').addEventListener('click', async () => {
+      const resultDiv = document.getElementById('result');
+      const resultText = document.getElementById('resultText');
+      
+      resultDiv.classList.remove('hidden');
+      resultText.textContent = 'Tekshirilmoqda...';
+      
+      try {
+        await window.checkRemainingPremiumData();
+        resultText.textContent = 'Tekshirish tugallandi. Console\'ni tekshiring.';
+      } catch (error) {
+        resultText.textContent = 'Xatolik yuz berdi: ' + error.message;
+      }
+    });
+    
+    document.getElementById('removeBtn').addEventListener('click', async () => {
+      const resultDiv = document.getElementById('result');
+      const resultText = document.getElementById('resultText');
+      
+      if (!confirm('Haqiqatan ham barcha premium ma\'lumotlarni o\'chirmoqchimisiz?')) {
+        return;
+      }
+      
+      resultDiv.classList.remove('hidden');
+      resultText.textContent = 'O\'chirilmoqda...';
+      
+      try {
+        await window.removePremiumData();
+        resultText.textContent = 'Premium ma\'lumotlar muvaffaqiyatli o\'chirildi!';
+      } catch (error) {
+        resultText.textContent = 'Xatolik yuz berdi: ' + error.message;
+      }
+    });
+  </script>
+</body>
+</html> 
