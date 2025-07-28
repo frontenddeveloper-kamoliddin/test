@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xabarlar - Kodni tasdiqlash</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+      margin: 0;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+      animation: bgShift 30s ease-in-out infinite;
+    }
+
+    @keyframes bgShift {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.05) rotate(0.5deg); }
+    }
+
+    /* Floating particles */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      animation: float 8s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
+      50% { transform: translateY(-30px) rotate(180deg); opacity: 1; }
+    }
+
+    /* Glassmorphism styles */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+    
+    .glass-input {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #333;
+    }
+    
+    .glass-input::placeholder {
+      color: #666;
+    }
+    
+    .glass-button {
+      background: rgba(34, 197, 94, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      transition: all 0.3s ease;
+    }
+    
+    .glass-button:hover {
+      background: rgba(34, 197, 94, 0.9);
+      transform: translateY(-2px);
+    }
+    
+    .glass-button.red {
+      background: rgba(239, 68, 68, 0.8);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    .glass-button.red:hover {
+      background: rgba(239, 68, 68, 0.9);
+    }
+    
+    /* Sidebar specific styles */
+    .sidebar-button {
+      background: rgba(34, 197, 94, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .sidebar-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .sidebar-button:hover::before {
+      left: 100%;
+    }
+    
+    .sidebar-button:hover {
+      background: rgba(34, 197, 94, 0.9);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(34, 197, 94, 0.3);
+    }
+    
+    .sidebar-button:active {
+      transform: translateY(0);
+    }
+    
+    /* User ID styling */
+    .user-id-container {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .user-id-container:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .user-code {
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+      letter-spacing: 2px;
+      font-weight: 700;
+    }
+    
+    .user-avatar {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      transition: all 0.3s ease;
+    }
+    
+    .user-avatar:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    }
+
+    /* Main content */
+    .main-content {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Header */
+    .header {
+      position: absolute;
+      top: 2rem;
+      left: 2rem;
+      right: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .menu-btn {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 1.5rem;
+      padding: 0.75rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .page-title {
+      color: #fff;
+      font-size: 2.5rem;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: -1px;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      margin: 0;
+    }
+
+    /* Code verification card */
+    .verification-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 24px;
+      padding: 3rem 2rem;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      transition: all 0.4s ease;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .verification-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+    }
+
+    .verification-title {
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      letter-spacing: -0.5px;
+    }
+
+    .code-input {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      font-size: 1.2rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 0.5rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      margin-bottom: 1.5rem;
+    }
+
+    .code-input:focus {
+      outline: none;
+      border-color: rgba(59, 130, 246, 0.5);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .code-input::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: normal;
+    }
+
+    .verify-btn {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      color: #fff;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+
+    .verify-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .add-debt-btn {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+
+    .add-debt-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+
+    .dashboard-btn {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .dashboard-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .result-message {
+      margin: 1rem 0;
+      padding: 1rem;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .result-message.success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+    }
+
+    .result-message.error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .page-title {
+        font-size: 2rem;
+      }
+      
+      .verification-card {
+        padding: 2rem 1.5rem;
+        margin: 1rem;
+      }
+      
+      .verification-title {
+        font-size: 1.5rem;
+      }
+      
+      .code-input {
+        font-size: 1rem;
+        padding: 0.75rem 1rem;
+      }
+    }
+
+    /* Dark mode styles for glassmorphism */
+    html.dark body {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
+    }
+    
+    html.dark .glass-card {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    html.dark .glass-input {
+      background: rgba(255, 255, 255, 0.05) !important;
+      color: #fff !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    html.dark .glass-input::placeholder {
+      color: #ccc !important;
+    }
+    
+    html.dark .text-gray-800 {
+      color: #fff !important;
+    }
+    
+    html.dark .text-gray-700 {
+      color: #e5e7eb !important;
+    }
+    
+    html.dark .text-gray-600 {
+      color: #d1d5db !important;
+    }
+    
+    html.dark .verification-card {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    html.dark .code-input {
+      background: rgba(255, 255, 255, 0.05) !important;
+      color: #fff !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    html.dark .code-input::placeholder {
+      color: rgba(255, 255, 255, 0.6) !important;
+    }
+    
+    html.dark .dashboard-btn {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    html.dark .dashboard-btn:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    html.dark .menu-btn {
+      background: rgba(255, 255, 255, 0.1) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    html.dark .menu-btn:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    html.dark .page-title {
+      color: #fff !important;
+    }
+    
+    html.dark .verification-title {
+      color: #fff !important;
+    }
+    
+    /* Dark mode for sidebar elements */
+    html.dark .sidebar-button {
+      background: rgba(34, 197, 94, 0.8) !important;
+      border-color: rgba(34, 197, 94, 0.3) !important;
+    }
+    
+    html.dark .sidebar-button:hover {
+      background: rgba(34, 197, 94, 0.9) !important;
+    }
+    
+    html.dark .user-id-container {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1)) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    
+    html.dark .user-id-container:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2)) !important;
+    }
+    
+    html.dark .user-code {
+      color: #fff !important;
+    }
+    
+    html.dark .user-avatar {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+    }
+    
+    /* Dark mode for animated background */
+    html.dark .bg-animation {
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%) !important;
+    }
+    
+    /* Dark mode for particles */
+    html.dark .particle {
+      background: rgba(255, 255, 255, 0.2) !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-animation"></div>
+  <div class="particles" id="particles"></div>
+
+  <!-- Improved Sidebar -->
+  <div id="sidebar" class="fixed top-0 left-0 h-full w-80 glass-card z-30 transform -translate-x-full transition-transform duration-300">
+    <!-- Header with user profile -->
+    <div class="p-6 border-b border-white/20">
+      <div class="flex items-center justify-between mb-6">
+        <button id="toggleDark" class="text-white hover:text-gray-200 transition text-xl p-2 rounded-lg bg-white/10 backdrop-blur-sm" title="Dark mode">
+          <svg id="darkIcon" xmlns="http://www.w3.org/2000/svg" class="inline w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
+          </svg>
+        </button>
+        <button id="closeSidebar" class="text-white hover:text-red-300 transition text-2xl p-2 rounded-lg bg-white/10 backdrop-blur-sm">&times;</button>
+      </div>
+      
+      <!-- User Profile Card -->
+      <div class="glass-card rounded-xl p-4 bg-white/10 backdrop-blur-sm border border-white/20">
+        <div class="flex items-center space-x-4">
+          <div class="w-12 h-12 user-avatar rounded-full flex items-center justify-center text-white font-bold text-lg">
+            <span id="userInitials">KA</span>
+          </div>
+          <div class="flex-1">
+            <div class="text-white font-semibold text-lg mb-1" id="userName">kamoliddin</div>
+            <div class="text-blue-300 font-bold text-base mb-2" id="userId">#172</div>
+            <div class="user-id-container rounded-lg px-3 py-1 inline-block">
+              <span class="text-gray-200 text-xs font-mono tracking-wider">ID: </span>
+              <span id="userCode" class="user-code text-white text-xs">MMYEQ88K</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Navigation Menu -->
+    <div class="p-6 space-y-4">
+      <button id="logoutBtn" class="w-full sidebar-button text-white px-6 py-4 rounded-xl font-semibold transition text-lg flex items-center justify-center space-x-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        <span>Chiqish</span>
+      </button>
+      
+      <button onclick="window.location.href='bosh-sahifa.html'" class="w-full sidebar-button text-white px-6 py-4 rounded-xl font-semibold transition text-lg flex items-center justify-center space-x-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+        </svg>
+        <span>Bosh sahifa</span>
+      </button>
+      
+      <button onclick="window.location.href='dashboard.html'" class="w-full sidebar-button text-white px-6 py-4 rounded-xl font-semibold transition text-lg flex items-center justify-center space-x-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        <span>Dashboard</span>
+      </button>
+      
+      <button id="myDebtsBtn" class="w-full sidebar-button text-white px-6 py-4 rounded-xl font-semibold transition text-lg flex items-center justify-center space-x-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <span>Mening qarizlarim</span>
+      </button>
+      
+      <button id="viewDebtsBtn" class="w-full sidebar-button text-white px-6 py-4 rounded-xl font-semibold transition text-lg flex items-center justify-center space-x-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <span>Qarizdor qidirish</span>
+      </button>
+    </div>
+  </div>
+ 
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-40 z-20 hidden"></div>
+
+  <div class="main-content">
+    <div class="header">
+      <button id="openSidebar" class="menu-btn">&#9776;</button>
+      <h2 class="page-title">Xabarlar</h2>
+      <div style="width:50px;"></div>
+    </div>
+
+    <div class="verification-card">
+      <h1 class="verification-title">Xabarlar</h1>
+      
+      <!-- Pending Requests Section -->
+      <div id="pendingRequestsSection" class="mb-6">
+        <h2 class="text-white text-lg font-semibold mb-4 text-center">Kutilayotgan so'rovlar</h2>
+        <div id="pendingRequestsList" class="space-y-3">
+          <!-- Requests will be loaded here -->
+        </div>
+      </div>
+      
+
+      
+
+      
+      <button id="goDashboardBtn" class="dashboard-btn">Dashboardga qaytish</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, updateDoc, doc, getDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // Firebase config (from dashboard.js)
+    const firebaseConfig = {
+      apiKey: "AIzaSyACHEuejKVniBAcYExQxk23A9QD84bUaB4",
+      authDomain: "new-project-6075a.firebaseapp.com",
+      projectId: "new-project-6075a",
+      storageBucket: "new-project-6075a.appspot.com",
+      messagingSenderId: "974403904500",
+      appId: "1:974403904500:web:5d4edb5db8f5432cbdcfa1",
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const resultMsg = document.getElementById('resultMsg');
+    const pendingRequestsList = document.getElementById('pendingRequestsList');
+
+    // Load pending requests
+    async function loadPendingRequests() {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      // Get current user's ID (sidebarUserCode or uid)
+      const userRef = doc(db, 'users', currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : {};
+      const currentUserId = userData.sidebarUserCode || currentUser.uid;
+
+      // Query for pending requests sent to this user
+      const q = query(
+        collection(db, 'messages'), 
+        where('to', '==', currentUserId),
+        where('status', '==', 'pending'),
+        where('requestType', '==', 'debt_request')
+      );
+      
+      const snap = await getDocs(q);
+      const requests = [];
+      
+      snap.forEach(doc => {
+        requests.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Sort by creation date (newest first)
+      requests.sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
+
+      // Render requests
+      if (requests.length === 0) {
+        pendingRequestsList.innerHTML = '<div class="text-center text-white/60 text-sm">Kutilayotgan so\'rovlar yo\'q</div>';
+      } else {
+        pendingRequestsList.innerHTML = requests.map(request => `
+          <div class="glass-card rounded-xl p-4 border border-white/20">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                  ${request.fromName ? request.fromName.slice(0, 2).toUpperCase() : 'NA'}
+                </div>
+                <div>
+                  <div class="text-white font-semibold">${request.fromName || 'Noma\'lum'}</div>
+                  <div class="text-white/60 text-sm">ID: ${request.fromId}</div>
+                  ${request.fromNumber ? `<div class="text-white/60 text-sm">Tel: ${request.fromNumber}</div>` : ''}
+                </div>
+              </div>
+              <div class="text-white/40 text-xs">
+                ${request.createdAt?.toDate ? request.createdAt.toDate().toLocaleString('uz-UZ') : ''}
+              </div>
+            </div>
+            <div class="text-white/80 text-sm mb-4">
+              Sizga qarz qo'shish uchun so'rov yubordi
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="approveRequest('${request.id}', '${request.fromId}', '${request.fromName}', '${request.fromNumber}')" 
+                      class="flex-1 glass-button text-white px-4 py-2 rounded-lg font-semibold">
+                Ruxsat berish
+              </button>
+              <button onclick="rejectRequest('${request.id}')" 
+                      class="flex-1 glass-button red text-white px-4 py-2 rounded-lg font-semibold">
+                Rad etish
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Approve request function
+    window.approveRequest = async (requestId, fromId, fromName, fromNumber) => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      try {
+        // Update request status to approved
+        await updateDoc(doc(db, 'messages', requestId), { 
+          status: 'approved',
+          approvedAt: Timestamp.now()
+        });
+
+        // Add the user to current user's addedSearchUsers
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        let addedSearchUsers = [];
+        if (userSnap.exists() && Array.isArray(userSnap.data().addedSearchUsers)) {
+          addedSearchUsers = userSnap.data().addedSearchUsers;
+        }
+
+        const userObj = {
+          id: fromId,
+          name: fromName || 'Noma\'lum',
+          number: fromNumber || ''
+        };
+
+        // Check for duplicates
+        if (!addedSearchUsers.some(u => u.id === userObj.id)) {
+          addedSearchUsers.push(userObj);
+          await updateDoc(userRef, { addedSearchUsers });
+        }
+
+        // Reload requests
+        await loadPendingRequests();
+        
+        // Show success message
+        resultMsg.textContent = 'So\'rov tasdiqlandi! Qarzdor qo\'shildi.';
+        resultMsg.classList.add('success');
+        resultMsg.classList.remove('error');
+        
+      } catch (error) {
+        console.error('Error approving request:', error);
+        resultMsg.textContent = 'Xatolik yuz berdi!';
+        resultMsg.classList.add('error');
+        resultMsg.classList.remove('success');
+      }
+    };
+
+    // Reject request function
+    window.rejectRequest = async (requestId) => {
+      try {
+        // Update request status to rejected
+        await updateDoc(doc(db, 'messages', requestId), { 
+          status: 'rejected',
+          rejectedAt: Timestamp.now()
+        });
+
+        // Reload requests
+        await loadPendingRequests();
+        
+        // Show success message
+        resultMsg.textContent = 'So\'rov rad etildi!';
+        resultMsg.classList.add('success');
+        resultMsg.classList.remove('error');
+        
+      } catch (error) {
+        console.error('Error rejecting request:', error);
+        resultMsg.textContent = 'Xatolik yuz berdi!';
+        resultMsg.classList.add('error');
+        resultMsg.classList.remove('success');
+      }
+    };
+
+    // Load requests on page load and set up real-time updates
+    async function initializeRequests() {
+      await loadPendingRequests();
+      
+      // Set up real-time listener for new requests
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        // Reload requests every 5 seconds for real-time updates
+        setInterval(loadPendingRequests, 5000);
+      }
+    }
+
+    // Initialize when page loads
+    initializeRequests();
+  </script>
+
+  <script>
+    // Create floating particles
+    const particlesContainer = document.getElementById('particles');
+    const particleCount = 30;
+
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.animationDelay = Math.random() * 8 + 's';
+      particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+      particlesContainer.appendChild(particle);
+    }
+
+    // Sidebar functionality
+    document.getElementById('openSidebar').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.remove('-translate-x-full');
+      document.getElementById('sidebarOverlay').classList.remove('hidden');
+    });
+
+    document.getElementById('closeSidebar').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebarOverlay').classList.add('hidden');
+    });
+
+    document.getElementById('sidebarOverlay').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebarOverlay').classList.add('hidden');
+    });
+
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      // Add logout logic here
+      window.location.href = 'index.html';
+    });
+
+    // Dashboard button
+    document.getElementById('goDashboardBtn').onclick = function() {
+      window.location.href = 'dashboard.html';
+    };
+
+    // Dark mode toggle
+    const toggleBtn = document.getElementById('toggleDark');
+    const html = document.documentElement;
+    toggleBtn.addEventListener('click', () => {
+      html.classList.toggle('dark');
+      const icon = document.getElementById('darkIcon');
+      if (html.classList.contains('dark')) {
+        icon.innerHTML = `<path id="sunIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.07l-.71.71M21 12h-1M4 12H3m16.66 6.66l-.71-.71M4.05 4.93l-.71-.71M12 5a7 7 0 100 14 7 7 0 000-14z" />`;
+      } else {
+        icon.innerHTML = `<path id="moonIcon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />`;
+      }
+    });
+  </script>
+</body>
+</html>

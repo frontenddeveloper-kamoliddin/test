@@ -8,7 +8,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -24,13 +25,108 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// Cyrillic to Latin conversion mapping
+const cyrillicToLatin = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+  'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+  'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'x', 'ц': 'ts',
+  'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+  'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo', 'Ж': 'Zh',
+  'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O',
+  'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'X', 'Ц': 'Ts',
+  'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya'
+};
+
+// Convert Cyrillic to Latin
+function convertCyrillicToLatin(text) {
+  if (!text) return '';
+  return text.split('').map(char => cyrillicToLatin[char] || char).join('');
+}
+
+// Enhanced search function that handles both Cyrillic and Latin
+function enhancedSearch(text, searchTerm) {
+  if (!text || !searchTerm) return false;
+  
+  const textLower = text.toLowerCase();
+  const searchLower = searchTerm.toLowerCase();
+  
+  // Direct search
+  if (textLower.includes(searchLower)) return true;
+  
+  // Convert search term to Latin and search
+  const searchLatin = convertCyrillicToLatin(searchLower);
+  if (searchLatin !== searchLower) {
+    if (textLower.includes(searchLatin)) return true;
+  }
+  
+  // Convert text to Latin and search
+  const textLatin = convertCyrillicToLatin(textLower);
+  if (textLatin !== textLower) {
+    if (textLatin.includes(searchLower)) return true;
+    if (searchLatin !== searchLower && textLatin.includes(searchLatin)) return true;
+  }
+  
+  return false;
+}
+
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     window.location.href = "index.html";
   } else {
+    setupSidebar(user);
     loadUserDebtorsStats(user);
   }
 });
+
+// Setup sidebar functionality
+function setupSidebar(user) {
+  const sidebar = document.getElementById("sidebar");
+  const sidebarOverlay = document.getElementById("sidebarOverlay");
+  const openSidebarBtn = document.getElementById("openSidebar");
+  const closeSidebarBtn = document.getElementById("closeSidebar");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  // Sidebar toggle functions
+  if (openSidebarBtn) {
+    openSidebarBtn.onclick = () => {
+      if (sidebar) sidebar.classList.remove("-translate-x-full");
+      if (sidebarOverlay) sidebarOverlay.classList.remove("hidden");
+    };
+  }
+
+  if (closeSidebarBtn) {
+    closeSidebarBtn.onclick = closeSidebar;
+  }
+
+  if (sidebarOverlay) {
+    sidebarOverlay.onclick = closeSidebar;
+  }
+
+  if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+      try {
+        await signOut(auth);
+        window.location.href = "index.html";
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Still redirect even if there's an error
+        window.location.href = "index.html";
+      }
+    };
+  }
+
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.add("-translate-x-full");
+    if (sidebarOverlay) sidebarOverlay.classList.add("hidden");
+  }
+
+  // Close sidebar on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeSidebar();
+    }
+  });
+}
 
 async function loadUserDebtorsStats(user) {
   const snapshot = await getDocs(collection(db, "debtors"));
