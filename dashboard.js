@@ -371,11 +371,8 @@ onAuthStateChanged(auth, async (user) => {
       loadDebtors();
       loadAddedSearchUsers();
       loadAllUsers();
-      checkPendingPermissionRequests();
       checkNotifications();
-      setupPermissionRequestListener();
       setupNotificationListener();
-      setupPermissionUpdateListener();
       updateMessageCountBadge();
     } catch (error) {
       console.error('Authentication error:', error);
@@ -522,6 +519,7 @@ if (debtorForm) {
       product,
       note,
       date: Timestamp.now(),
+      authorId: user.uid,
     }],
   });
   
@@ -536,14 +534,17 @@ if (debtorForm) {
 // Load and render debtors
 async function loadDebtors() {
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) {
+    return;
+  }
   
-        const searchInput = document.getElementById("searchInput");
+  const searchInput = document.getElementById("searchInput");
   const filterSelect = document.getElementById("filterSelect");
   
   const search = searchInput ? searchInput.value.toLowerCase() : "";
   const filterType = filterSelect ? filterSelect.value : "";
-    const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
+  
+  const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
   
   let debtors = [];
   snapshot.forEach((doc) => {
@@ -555,14 +556,16 @@ async function loadDebtors() {
   });
   
   // Add search users
-  addedSearchUsers.forEach(user => {
-    const debtor = snapshot.docs
-      .map(doc => ({ ...doc.data(), id: doc.id }))
-      .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
-    if (debtor && !debtors.some(d => d.id === debtor.id)) {
-      debtors.push(debtor);
-    }
-  });
+  if (typeof addedSearchUsers !== 'undefined' && Array.isArray(addedSearchUsers)) {
+    addedSearchUsers.forEach(user => {
+      const debtor = snapshot.docs
+        .map(doc => ({ ...doc.data(), id: doc.id }))
+        .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
+      if (debtor && !debtors.some(d => d.id === debtor.id)) {
+        debtors.push(debtor);
+      }
+    });
+  }
   
   if (search) {
     debtors = debtors.filter((d) => enhancedSearch(d.name, search));
@@ -581,34 +584,55 @@ async function loadDebtors() {
 
 // Filter debtors
 function filterDebtors(debtors, filterType) {
+  const profilesContainer = document.getElementById('addedSearchUsersList');
+  
   switch(filterType) {
     case 'debt_high':
+      if (profilesContainer) profilesContainer.classList.add('hidden');
       return debtors.filter(d => {
         const total = calculateTotalDebt(d);
         return total > 0;
       }).sort((a, b) => calculateTotalDebt(b) - calculateTotalDebt(a));
     case 'debt_low':
+      if (profilesContainer) profilesContainer.classList.add('hidden');
       return debtors.filter(d => {
         const total = calculateTotalDebt(d);
         return total > 0;
       }).sort((a, b) => calculateTotalDebt(a) - calculateTotalDebt(b));
     case 'recent':
+      if (profilesContainer) profilesContainer.classList.add('hidden');
       // Most recent first
       return [...debtors].sort((a, b) => {
         const aDate = a.history && a.history.length ? a.history[a.history.length-1].date : new Date(0);
         const bDate = b.history && b.history.length ? b.history[b.history.length-1].date : new Date(0);
         return bDate - aDate;
       });
+    case 'show_profiles':
+      // Show profile cards
+      if (profilesContainer) {
+        profilesContainer.classList.remove('hidden');
+      }
+      // Render added search users to ensure they are displayed
+      renderAddedSearchUsers();
+      return debtors;
     default:
+      // Hide profile cards for other options
+      if (profilesContainer) {
+        profilesContainer.classList.add('hidden');
+      }
       return debtors;
   }
 }
 
 // Calculate total debt for a debtor
 function calculateTotalDebt(debtor) {
+  const currentUserId = auth.currentUser.uid;
+  // Filter history to only include transactions created by current user
+  const userHistory = (debtor.history || []).filter(h => h.authorId === currentUserId);
+  
   let totalAdd = 0, totalSub = 0;
   
-  (debtor.history || []).forEach((h) => {
+  userHistory.forEach((h) => {
     if (h.type === "add") totalAdd += h.amount || 0;
     if (h.type === "sub") totalSub += h.amount || 0;
   });
@@ -636,11 +660,15 @@ function renderDebtors(debtors) {
   
   if (debtorsList) {
     debtorsList.innerHTML = '';
-  
+    
     debtors.forEach((debtor, index) => {
-      const totalDebt = calculateTotalDebt(debtor);
-      const totalAdded = (debtor.history || []).reduce((sum, h) => h.type === 'add' ? sum + (h.amount || 0) : sum, 0);
-      const totalSubtracted = (debtor.history || []).reduce((sum, h) => h.type === 'sub' ? sum + (h.amount || 0) : sum, 0);
+      const currentUserId = auth.currentUser.uid;
+      // Filter history to only show transactions created by current user
+      const userHistory = (debtor.history || []).filter(h => h.authorId === currentUserId || !h.authorId);
+      
+      const totalAdded = userHistory.reduce((sum, h) => h.type === 'add' ? sum + (h.amount || 0) : sum, 0);
+      const totalSubtracted = userHistory.reduce((sum, h) => h.type === 'sub' ? sum + (h.amount || 0) : sum, 0);
+      const totalDebt = totalAdded - totalSubtracted;
       
       // Calculate progress percentage
       const progress = totalAdded > 0 ? (totalSubtracted / totalAdded) * 100 : 0;
@@ -648,11 +676,21 @@ function renderDebtors(debtors) {
       // Check if deadline is approaching
       const deadlineWarning = debtor.deadline ? checkDeadline(debtor.deadline) : null;
       
+      // Check if this debtor is profile added
+      const isProfileAdded = typeof addedSearchUsers !== 'undefined' && Array.isArray(addedSearchUsers) && 
+        addedSearchUsers.some(user => user.id === debtor.userId || user.id === debtor.code || user.id === debtor.id);
+      
       const card = document.createElement('div');
-      card.className = 'card animate-card p-5';
+      card.className = 'card animate-card p-5 relative';
       card.style.animationDelay = `${index * 0.05}s`;
       
+      // Add category badge
+      const categoryBadge = isProfileAdded ? 
+        '<div class="absolute top-3 right-3 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><i class="fas fa-user-friends"></i> Profile</div>' :
+        '<div class="absolute top-3 right-3 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1"><i class="fas fa-user-plus"></i> Qo\'lda</div>';
+      
       card.innerHTML = `
+        ${categoryBadge}
         <div class="flex items-start gap-4 mb-4">
           <div class="debtor-avatar bg-gradient-to-r from-indigo-500 to-purple-600">
             ${debtor.name.charAt(0)}
@@ -660,9 +698,6 @@ function renderDebtors(debtors) {
           <div class="flex-1">
             <div class="flex items-center justify-between">
               <h3 class="font-bold text-lg text-slate-800 dark:text-white">${debtor.name}</h3>
-              <span class="text-sm font-mono bg-indigo-100 dark:bg-slate-700 text-indigo-800 dark:text-indigo-300 px-2 py-1 rounded">
-                #${debtor.code || debtor.id.slice(0, 6)}
-              </span>
             </div>
             ${debtor.product ? `<div class="text-sm text-slate-600 dark:text-slate-400 mt-1">${debtor.product}</div>` : ''}
             
@@ -709,14 +744,15 @@ function renderDebtors(debtors) {
           </button>
           <button class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm transition delete-btn" data-delete="${debtor.id}">
             <i class="fas fa-trash mr-1"></i> O'chirish
-          </button>
-        </div>
-      `;
+                          </button>
+              </div>
+            `;
       
       debtorsList.appendChild(card);
     });
-    
-    // Add event listeners to buttons
+  }
+  
+  // Add event listeners to buttons
     document.querySelectorAll('.batafsil-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const debtorId = btn.getAttribute('data-id');
@@ -761,7 +797,7 @@ function renderDebtors(debtors) {
       });
     });
   }
-}
+
 
 // Format money
 function formatMoney(amount) {
@@ -1105,10 +1141,11 @@ function initApp() {
     document.getElementById('myDebtsModal').classList.remove('hidden');
     loadMyDebts();
   });
-  document.getElementById('messagesBtn')?.addEventListener('click', () => {
-    document.getElementById('messagesModal').classList.remove('hidden');
-    loadMessages();
-  });
+  // Messages button now redirects to admin-messages.html
+  // document.getElementById('messagesBtn')?.addEventListener('click', () => {
+  //   document.getElementById('messagesModal').classList.remove('hidden');
+  //   loadMessages();
+  // });
 
   document.getElementById('notificationBtn')?.addEventListener('click', toggleNotifications);
   
@@ -1148,7 +1185,15 @@ function initApp() {
   // Setup modal close buttons
   setupModalCloseButtons();
   
-
+  // Load initial data
+  loadDebtors();
+  loadUserTotals();
+  loadAllUsers();
+  loadAddedSearchUsers();
+  checkNotifications();
+  
+  // Setup listeners
+  setupNotificationListener();
 }
 
 // Setup search functionality
@@ -1164,7 +1209,7 @@ function setupSearchFunctionality() {
         return;
       }
       
-      const results = allUsers.filter(user =>
+      const results = (allUsers || []).filter(user =>
         enhancedSearch(user.id, query) ||
         (user.username && enhancedSearch(user.username, query))
       );
@@ -1212,7 +1257,7 @@ function setupSearchFunctionality() {
   }
 }
 
-// Add user with permission system
+// Add user directly without permission system
 async function addUserWithPermission(userToAdd) {
   const currentUser = auth.currentUser;
   if (!currentUser) {
@@ -1226,132 +1271,17 @@ async function addUserWithPermission(userToAdd) {
     return;
   }
   
-
-  
-  // Check if user owns the target user
-  if (userToAdd.userId === currentUser.uid || userToAdd.id === currentUser.uid) {
-    addedSearchUsers.push(userToAdd);
-    renderAddedSearchUsers();
-    saveAddedSearchUsers();
-    showNotification(`${userToAdd.name} muvaffaqiyatli qo'shildi!`, 'success');
-    return;
-  }
-  
-  // Request permission
-  const result = await showPermissionRequestModal(userToAdd, currentUser);
-  if (result.granted) {
-    addedSearchUsers.push(userToAdd);
-    renderAddedSearchUsers();
-    saveAddedSearchUsers();
-    showNotification(`${userToAdd.name} muvaffaqiyatli qo'shildi!`, 'success');
-  }
+  // Add user directly
+  addedSearchUsers.push(userToAdd);
+  renderAddedSearchUsers();
+  saveAddedSearchUsers();
+  loadDebtors(); // Refresh the debtors list to include the new user
+  showNotification(`${userToAdd.name} muvaffaqiyatli qo'shildi!`, 'success');
 }
 
-// Show permission request modal
-function showPermissionRequestModal(userToAdd, requestingUser) {
-  return new Promise((resolve) => {
-    const modal = document.createElement('div');
-    modal.id = 'permissionModal';
-    modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50';
-    modal.innerHTML = `
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 relative border border-gray-200 dark:border-gray-700">
-        <button id="closePermissionModal" class="absolute top-3 right-3 text-2xl text-gray-400 hover:text-red-500 transition">&times;</button>
-        
-        <div class="text-center mb-6">
-          <div class="w-16 h-16 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-            </svg>
-          </div>
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Ruxsat so'rash</h3>
-          <p class="text-gray-600 dark:text-gray-300 text-sm">Foydalanuvchiga qarzdor qo'shish uchun ruxsat so'ralmoqda</p>
-        </div>
-
-        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
-              ${userToAdd.name.slice(0,2).toUpperCase()}
-            </div>
-            <div class="flex-1">
-              <div class="font-bold text-gray-900 dark:text-white">${userToAdd.name}</div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">ID: ${userToAdd.id}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="space-y-3">
-          <button id="requestPermissionBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-semibold transition">
-            Ruxsat so'rash
-          </button>
-
-          <button id="cancelPermissionBtn" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-3 rounded-lg font-semibold transition">
-            Bekor qilish
-          </button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Event listeners
-    const closeBtn = modal.querySelector('#closePermissionModal');
-    const requestBtn = modal.querySelector('#requestPermissionBtn');
-
-    const cancelBtn = modal.querySelector('#cancelPermissionBtn');
-
-    const closeModal = () => {
-      modal.remove();
-    };
-
-    closeBtn.onclick = closeModal;
-    cancelBtn.onclick = () => {
-      closeModal();
-      resolve({ granted: false, reason: 'cancelled' });
-    };
-
-    requestBtn.onclick = async () => {
-      closeModal();
-      const result = await sendPermissionRequest(userToAdd, requestingUser);
-      resolve(result);
-    };
 
 
-  });
-}
 
-// Send permission request
-async function sendPermissionRequest(userToAdd, requestingUser) {
-  try {
-    // Get requesting user info
-    const requestingUserRef = doc(db, "users", requestingUser.uid);
-    const requestingUserSnap = await getDoc(requestingUserRef);
-    const requestingUserName = requestingUserSnap.exists() ? 
-      requestingUserSnap.data().name : requestingUser.displayName || requestingUser.email;
-
-    // Create a permission request document
-    const permissionRequest = {
-      requestingUserId: requestingUser.uid,
-      requestingUserName: requestingUserName,
-      targetUserId: userToAdd.id,
-      targetUserName: userToAdd.name,
-      status: 'pending',
-      timestamp: new Date(),
-      type: 'add_debtor'
-    };
-
-    // Save to Firebase
-    const requestRef = await addDoc(collection(db, "permissionRequests"), permissionRequest);
-    
-    // Show success message
-    showNotification('Ruxsat so\'rovi yuborildi! Foydalanuvchi tasdiqlagandan so\'ng xabar beramiz.', 'success');
-    
-    return { granted: false, reason: 'pending_approval', requestId: requestRef.id };
-  } catch (error) {
-    console.error('Error sending permission request:', error);
-    showNotification('Xatolik yuz berdi. Qaytadan urinib ko\'ring.', 'error');
-    return { granted: false, reason: 'error' };
-  }
-}
 
 // Setup modal close buttons
 function setupModalCloseButtons() {
@@ -1617,9 +1547,9 @@ async function loadMyDebts() {
               </div>
             ` : '';
             
-            const quantityInfo = h.quantity ? `
+            const quantityInfo = h.count ? `
               <div class="text-xs text-gray-500">
-                <span class="font-medium">Miqdori:</span> ${h.quantity} ta
+                <span class="font-medium">Miqdori:</span> ${h.count} ta
               </div>
             ` : '';
             
@@ -1675,85 +1605,6 @@ async function loadMessages() {
   if (!currentUser) return;
   
   try {
-    // Load permission requests
-    const requestsRef = collection(db, "permissionRequests");
-    const requestsQuery = query(requestsRef, where("targetUserId", "==", currentUser.uid));
-    const requestsSnapshot = await getDocs(requestsQuery);
-    
-    const requestsList = document.getElementById('permissionRequestsList');
-    if (requestsList) {
-      const requests = [];
-      requestsSnapshot.forEach((doc) => {
-        const request = { ...doc.data(), id: doc.id };
-        requests.push(request);
-      });
-      
-      requests.sort((a, b) => {
-        const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
-        const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
-        return timeB - timeA;
-      });
-      
-      if (requests.length === 0) {
-        requestsList.innerHTML = `
-          <div class="text-center py-8 text-gray-500">
-            <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <p class="text-sm">Ruxsat so'rovlari yo'q</p>
-          </div>
-        `;
-      } else {
-        requestsList.innerHTML = requests.map(request => {
-          const timestamp = request.timestamp?.toDate ? request.timestamp.toDate() : new Date(request.timestamp);
-          const timeAgo = getTimeAgo(timestamp);
-          const statusColor = request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                             request.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                             'bg-red-100 text-red-800';
-          const statusText = request.status === 'pending' ? 'Kutilmoqda' : 
-                            request.status === 'approved' ? 'Tasdiqlangan' : 'Rad etilgan';
-          
-          return `
-            <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-              <div class="flex items-start justify-between">
-                <div class="flex-1">
-                  <div class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                      ${request.requestingUserName?.slice(0,2).toUpperCase() || '??'}
-                    </div>
-                    <div>
-                      <div class="font-semibold text-gray-900 dark:text-white">
-                        ${request.requestingUserName || 'Noma\'lum foydalanuvchi'}
-                      </div>
-                      <div class="text-sm text-gray-500 dark:text-gray-400">
-                        ${request.targetUserName} uchun ruxsat so'rayapti
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex items-center justify-between">
-                    <div class="text-xs text-gray-400">${timeAgo}</div>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full ${statusColor}">
-                      ${statusText}
-                    </span>
-                  </div>
-                </div>
-                ${request.status === 'pending' ? `
-                  <div class="flex gap-2 ml-4">
-                    <button onclick="approveRequest('${request.id}')" class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded transition">
-                      Tasdiqlash
-                    </button>
-                    <button onclick="rejectRequest('${request.id}')" class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition">
-                      Rad etish
-                    </button>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-    }
-    
     // Load notifications
     const notificationsRef = collection(db, "notifications");
     const notificationsQuery = query(notificationsRef, where("userId", "==", currentUser.uid));
@@ -1899,8 +1750,13 @@ function openDebtorModal(debtor) {
   modal.id = 'debtorDetailModal';
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
   
+  const currentUserId = auth.currentUser.uid;
+  
+  // Filter history to only show transactions created by current user
+  const userHistory = (debtor.history || []).filter(h => h.authorId === currentUserId || !h.authorId);
+  
   let totalAdd = 0, totalSub = 0;
-  (debtor.history || []).forEach((h) => {
+  userHistory.forEach((h) => {
     if (h.type === "add") totalAdd += h.amount || 0;
     if (h.type === "sub") totalSub += h.amount || 0;
   });
@@ -1955,8 +1811,8 @@ function openDebtorModal(debtor) {
         <div class="flex-1">
           <div class="font-bold mb-4 text-gray-900 dark:text-white">Barcha harakatlar</div>
           <div class="space-y-3 max-h-96 overflow-y-auto">
-            ${(debtor.history || []).length > 0 ? 
-              (debtor.history || []).map(h => {
+            ${userHistory.length > 0 ? 
+              userHistory.map(h => {
                 const date = h.date?.toDate ? h.date.toDate() : new Date();
                 const time = date.toLocaleString("uz-UZ");
                 return `
@@ -1964,13 +1820,15 @@ function openDebtorModal(debtor) {
                     <div class="font-semibold ${h.type === "add" ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"}">
                       ${h.type === "add" ? "+" : "-"}${h.amount} so'm
                     </div>
-                    ${h.product ? `<div class="text-sm text-gray-600 dark:text-gray-300">${h.product} (${h.count || 1} x ${h.price || h.amount} so'm)</div>` : ""}
+                    ${h.product ? `<div class="text-sm text-gray-600 dark:text-gray-300">Mahsulot: ${h.product}</div>` : ""}
+                    ${h.count ? `<div class="text-sm text-gray-600 dark:text-gray-300">Miqdori: ${h.count} ta</div>` : ""}
+                    ${h.price ? `<div class="text-sm text-gray-600 dark:text-gray-300">Narxi: ${formatMoney(h.price)} so'm</div>` : ""}
                     ${h.note ? `<div class="text-sm text-gray-500 dark:text-gray-400 mt-1">${h.note}</div>` : ""}
                     <div class="text-xs text-gray-400 mt-2">${time}</div>
                   </div>
                 `;
               }).join("") : 
-              '<div class="text-gray-400 text-center py-8">Tarix yo\'q</div>'
+              '<div class="text-gray-400 text-center py-8">Siz yozgan qarzlar yo\'q</div>'
             }
           </div>
         </div>
@@ -2187,53 +2045,18 @@ async function updateUserTotals() {
     snapshot.forEach((doc) => {
       const data = doc.data();
       if (data.userId === user.uid) {
-        // Use stored totals if available, otherwise calculate from history
-        if (typeof data.totalAdded === "number") {
-          totalAdded += data.totalAdded;
-        } else {
-          (data.history || []).forEach(h => {
-            if (h.type === "add") totalAdded += h.amount || 0;
-          });
-        }
+        // Filter history to only include transactions created by current user
+        const userHistory = (data.history || []).filter(h => h.authorId === user.uid);
         
-        if (typeof data.totalSubtracted === "number") {
-          totalSubtracted += data.totalSubtracted;
-        } else {
-          (data.history || []).forEach(h => {
-            if (h.type === "sub") totalSubtracted += h.amount || 0;
-          });
-        }
+        // Calculate totals only from user's own transactions
+        userHistory.forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+          if (h.type === "sub") totalSubtracted += h.amount || 0;
+        });
       }
     });
 
-    // Add search users totals
-    for (let idx = 0; idx < addedSearchUsers.length; idx++) {
-      const searchUser = addedSearchUsers[idx];
-      let searchUserTotalAdded = 0, searchUserTotalSub = 0;
-      const debtorsSnap = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
-      const debtor = debtorsSnap.docs
-        .map(doc => ({ ...doc.data(), id: doc.id }))
-        .find(d => d.userId === searchUser.id || d.code === searchUser.id || d.id === searchUser.id);
-
-      if (debtor) {
-        if (typeof debtor.totalAdded === "number") {
-          searchUserTotalAdded = debtor.totalAdded;
-        } else {
-          (debtor.history || []).forEach(h => {
-            if (h.type === "add") searchUserTotalAdded += h.amount || 0;
-          });
-        }
-        if (typeof debtor.totalSubtracted === "number") {
-          searchUserTotalSub = debtor.totalSubtracted;
-        } else {
-          (debtor.history || []).forEach(h => {
-            if (h.type === "sub") searchUserTotalSub += h.amount || 0;
-          });
-        }
-      }
-      totalAdded += searchUserTotalAdded;
-      totalSubtracted += searchUserTotalSub;
-    }
+    // Removed addedSearchUsers logic - only show current user's transactions
 
     totalDebt = totalAdded - totalSubtracted;
 
@@ -2285,32 +2108,12 @@ async function loadAllUsers() {
         username: data.username || null
       };
     });
-    console.log('Loaded users:', allUsers.length);
   } catch (error) {
     console.error('Error loading users:', error);
   }
 }
 
-// Check for pending permission requests
-async function checkPendingPermissionRequests() {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
-  
-  try {
-    const requestsRef = collection(db, "permissionRequests");
-    const q = query(requestsRef, where("targetUserId", "==", currentUser.uid));
-    const querySnapshot = await getDocs(q);
-    
-    querySnapshot.forEach((doc) => {
-      const request = doc.data();
-      if (request.status === "pending") {
-        showPermissionRequestNotification(request, doc.id);
-      }
-    });
-  } catch (error) {
-    console.error('Error checking pending requests:', error);
-  }
-}
+
 
 // Check for notifications
 async function checkNotifications() {
@@ -2336,26 +2139,7 @@ async function checkNotifications() {
   }
 }
 
-// Set up real-time listener for permission requests
-function setupPermissionRequestListener() {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
-  
-  const requestsRef = collection(db, "permissionRequests");
-  const q = query(requestsRef, where("targetUserId", "==", currentUser.uid));
-  
-  onSnapshot(q, (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === "added") {
-        const request = change.doc.data();
-        if (request.status === "pending") {
-          showPermissionRequestNotification(request, change.doc.id);
-        }
-        updateMessageCountBadge();
-      }
-    });
-  });
-}
+
 
 // Set up real-time listener for notifications
 function setupNotificationListener() {
@@ -2384,27 +2168,7 @@ function setupNotificationListener() {
   });
 }
 
-// Set up real-time listener for permission request updates
-function setupPermissionUpdateListener() {
-  const currentUser = auth.currentUser;
-  if (!currentUser) return;
-  
-  const requestsRef = collection(db, "permissionRequests");
-  const q = query(requestsRef, where("requestingUserId", "==", currentUser.uid));
-  
-  onSnapshot(q, (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === "modified") {
-        const request = change.doc.data();
-        if (request.status === "approved") {
-          showNotification(`Ruxsat berildi! ${request.targetUserName} sizga qo'shildi.`, 'success');
-        } else if (request.status === "rejected") {
-          showNotification(`Ruxsat rad etildi.`, 'warning');
-        }
-      }
-    });
-  });
-}
+
 
 // Update message count badge
 async function updateMessageCountBadge() {
@@ -2412,35 +2176,29 @@ async function updateMessageCountBadge() {
   if (!currentUser) return;
   
   try {
-    // Count pending permission requests
-    const requestsRef = collection(db, "permissionRequests");
-    const requestsQuery = query(requestsRef, where("targetUserId", "==", currentUser.uid));
-    const requestsSnapshot = await getDocs(requestsQuery);
-    const pendingRequestsCount = requestsSnapshot.docs.filter(doc => doc.data().status === "pending").length;
-    
-    // Count unread notifications
+    // Count unread notifications only
     const notificationsRef = collection(db, "notifications");
     const notificationsQuery = query(notificationsRef, where("userId", "==", currentUser.uid));
     const notificationsSnapshot = await getDocs(notificationsQuery);
-    const unreadNotificationsCount = notificationsSnapshot.docs.filter(doc => doc.data().read === false).length;
+    const unreadNotificationsCount = notificationsSnapshot.docs.filter(doc => !doc.data().read).length;
     
-    const totalCount = pendingRequestsCount + unreadNotificationsCount;
+    const totalCount = unreadNotificationsCount;
     
-    // Update or create badge
-    const messagesBtn = document.getElementById('messagesBtn');
+    // Update or create badge for admin messages button
+    const messagesBtn = document.querySelector('button[onclick*="admin-messages.html"]');
     if (!messagesBtn) return;
     
-    let badge = messagesBtn.querySelector('.message-badge');
+    let badge = messagesBtn.querySelector('#messageBadge');
     if (totalCount > 0) {
       if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'message-badge absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold';
-        messagesBtn.style.position = 'relative';
-        messagesBtn.appendChild(badge);
+        badge = document.getElementById('messageBadge');
       }
-      badge.textContent = totalCount > 99 ? '99+' : totalCount;
+      if (badge) {
+        badge.textContent = totalCount > 99 ? '99+' : totalCount;
+        badge.classList.remove('hidden');
+      }
     } else if (badge) {
-      badge.remove();
+      badge.classList.add('hidden');
     }
   } catch (error) {
     console.error('Error updating message count badge:', error);
@@ -2485,14 +2243,16 @@ async function renderAddedSearchUsers() {
   if (!container) {
     container = document.createElement('div');
     container.id = 'addedSearchUsersList';
-    container.className = 'w-full max-w-3xl space-y-4 px-4 mb-6';
+    container.className = 'w-full max-w-3xl space-y-8 px-4 mb-6 mt-8';
     const debtorsList = document.getElementById('debtorsList');
     if (debtorsList && debtorsList.parentNode) {
-      debtorsList.parentNode.insertBefore(container, debtorsList);
+      debtorsList.parentNode.appendChild(container);
     }
   }
 
   container.innerHTML = '';
+  
+  const currentUserId = auth.currentUser.uid;
   
   for (let idx = 0; idx < addedSearchUsers.length; idx++) {
     const user = addedSearchUsers[idx];
@@ -2504,21 +2264,33 @@ async function renderAddedSearchUsers() {
       .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
 
     if (debtor) {
+      // Filter history to only include transactions created by current user
+      const userHistory = (debtor.history || []).filter(h => h.authorId === currentUserId);
+      
       if (typeof debtor.totalAdded === "number") {
-        totalAdded = debtor.totalAdded;
+        // If using totalAdded field, we need to calculate based on user's transactions
+        userHistory.forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+        });
       } else {
-        (debtor.history || []).forEach(h => {
+        userHistory.forEach(h => {
           if (h.type === "add") totalAdded += h.amount || 0;
         });
       }
       if (typeof debtor.totalSubtracted === "number") {
-        totalSub = debtor.totalSubtracted;
+        // If using totalSubtracted field, we need to calculate based on user's transactions
+        userHistory.forEach(h => {
+          if (h.type === "sub") totalSub += h.amount || 0;
+        });
       } else {
-        (debtor.history || []).forEach(h => {
+        userHistory.forEach(h => {
           if (h.type === "sub") totalSub += h.amount || 0;
         });
       }
     }
+
+    // Show all added profiles, even if no debts have been written yet
+    // if (totalAdded === 0) continue;
 
     const remaining = totalAdded - totalSub;
 
@@ -2542,15 +2314,21 @@ async function renderAddedSearchUsers() {
             ` : ""}
           </div>
           <div class="text-xs text-gray-500 dark:text-gray-400 font-mono mb-1">ID: ${user.id}</div>
-          <div class="mt-1 font-semibold text-base text-gray-700 dark:text-gray-200">
-            Jami qo'shilgan: <span class="text-green-600 dark:text-green-400 font-bold">${totalAdded} so'm</span>
-          </div>
-          <div class="mt-1 font-semibold text-base">
-            <span class="text-red-600 dark:text-red-400">Jami ayirilgan: ${totalSub} so'm</span>
-          </div>
-          <div class="mt-1 font-semibold text-base">
-            Qolgan qarzdorlik: <span class="text-blue-700 dark:text-blue-400 font-bold">${remaining} so'm</span>
-          </div>
+          ${totalAdded > 0 ? `
+            <div class="mt-1 font-semibold text-base text-gray-700 dark:text-gray-200">
+              Jami qo'shilgan: <span class="text-green-600 dark:text-green-400 font-bold">${totalAdded} so'm</span>
+            </div>
+            <div class="mt-1 font-semibold text-base">
+              <span class="text-red-600 dark:text-red-400">Jami ayirilgan: ${totalSub} so'm</span>
+            </div>
+            <div class="mt-1 font-semibold text-base">
+              Qolgan qarzdorlik: <span class="text-blue-700 dark:text-blue-400 font-bold">${remaining} so'm</span>
+            </div>
+          ` : `
+            <div class="mt-1 font-semibold text-base text-gray-500 dark:text-gray-400">
+              <i class="fas fa-info-circle mr-1"></i>Hali qarzdorlik yozilmagan
+            </div>
+          `}
           <div class="flex flex-col sm:flex-row gap-2 mt-4 w-full">
             <button class="batafsil-search-user-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">Batafsil</button>
             <button class="remove-search-user-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow text-sm w-full sm:w-auto" data-id="${user.id}">O'chirish</button>
@@ -2567,6 +2345,7 @@ async function renderAddedSearchUsers() {
       addedSearchUsers = addedSearchUsers.filter(u => u.id !== userId);
       renderAddedSearchUsers();
       saveAddedSearchUsers();
+      loadDebtors(); // Refresh the debtors list after removing a user
     };
   });
   
@@ -2613,105 +2392,11 @@ async function renderAddedSearchUsers() {
   });
 }
 
-// Show permission request notification
-function showPermissionRequestNotification(request, requestId) {
-  const notification = document.createElement('div');
-  notification.className = 'fixed top-4 right-4 z-[90] p-4 rounded-lg shadow-lg max-w-sm bg-blue-500 text-white transition-all duration-300 transform translate-x-full';
-  notification.innerHTML = `
-    <div class="flex items-start gap-3">
-      <div class="flex-1">
-        <div class="font-bold mb-1">Ruxsat so'rovi</div>
-        <div class="text-sm mb-3">${request.requestingUserName} sizga qarzdor qo'shish uchun ruxsat so'rayapti</div>
-        <div class="flex gap-2">
-          <button id="approveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition">Tasdiqlash</button>
-          <button id="rejectBtn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition">Rad etish</button>
-        </div>
-      </div>
-      <button id="closeNotification" class="text-white hover:text-gray-200 text-xl">&times;</button>
-    </div>
-  `;
-  
-  document.body.appendChild(notification);
-  
-  // Animate in
-  setTimeout(() => {
-    notification.classList.remove('translate-x-full');
-  }, 100);
-  
-  // Event listeners
-  const closeBtn = notification.querySelector('#closeNotification');
-  const approveBtn = notification.querySelector('#approveBtn');
-  const rejectBtn = notification.querySelector('#rejectBtn');
-  
-  const closeNotification = () => {
-    notification.classList.add('translate-x-full');
-    setTimeout(() => notification.remove(), 300);
-  };
-  
-  closeBtn.onclick = closeNotification;
-  
-  approveBtn.onclick = async () => {
-    await updatePermissionRequest(requestId, 'approved');
-    closeNotification();
-    showNotification('Ruxsat berildi!', 'success');
-  };
-  
-  rejectBtn.onclick = async () => {
-    await updatePermissionRequest(requestId, 'rejected');
-    closeNotification();
-    showNotification('Ruxsat rad etildi', 'info');
-  };
-  
-  // Auto remove after 30 seconds
-  setTimeout(() => {
-    if (notification.parentNode) {
-      closeNotification();
-    }
-  }, 30000);
-}
 
-// Update permission request status
-async function updatePermissionRequest(requestId, status) {
-  try {
-    const requestRef = doc(db, "permissionRequests", requestId);
-    await updateDoc(requestRef, { 
-      status: status,
-      respondedAt: new Date()
-    });
-    
-    // If approved, notify the requesting user
-    if (status === 'approved') {
-      const requestSnap = await getDoc(requestRef);
-      const request = requestSnap.data();
-      
-      // Create a notification for the requesting user
-      await addDoc(collection(db, "notifications"), {
-        userId: request.requestingUserId,
-        type: 'permission_approved',
-        message: `${request.targetUserName} sizning ruxsat so'rovingizni tasdiqladi`,
-        timestamp: new Date(),
-        read: false
-      });
-    }
-  } catch (error) {
-    console.error('Error updating permission request:', error);
-  }
-}
+
+
 
 // Global functions for buttons (window object)
-window.approveRequest = async function(requestId) {
-  await updatePermissionRequest(requestId, 'approved');
-  loadMessages(); // Reload the list
-  updateMessageCountBadge(); // Update badge
-  showNotification('Ruxsat berildi!', 'success');
-};
-
-window.rejectRequest = async function(requestId) {
-  await updatePermissionRequest(requestId, 'rejected');
-  loadMessages(); // Reload the list
-  updateMessageCountBadge(); // Update badge
-  showNotification('Ruxsat rad etildi', 'info');
-};
 
 window.markNotificationAsRead = async function(notificationId) {
   try {

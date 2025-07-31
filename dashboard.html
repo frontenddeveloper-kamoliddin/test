@@ -162,14 +162,10 @@
       </button>
       
       <div class="space-y-2">
-        <button onclick="window.location.href='dashboard.html'" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
-          <i class="fas fa-tachometer-alt text-indigo-500"></i>
-          <span>Dashboard</span>
-        </button>
         
         <button onclick="window.location.href='bosh-sahifa.html'" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
-          <i class="fas fa-home text-green-500"></i>
-          <span>Bosh Sahifa</span>
+          <i class="fas fa-chart-bar text-xl text-green-500"></i>
+          <span>Ma'lumotlar</span>
         </button>
         
         <button id="myDebtsBtn" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition">
@@ -182,10 +178,11 @@
           <span>Qarzdor Qo'shish</span>
         </button>
         
-        <button id="messagesBtn" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition relative">
-          <i class="fas fa-envelope text-orange-500"></i>
-          <span>Xabarlar</span>
-          <span id="messageBadge" class="notification-badge hidden">0</span>
+        
+        
+        <button onclick="window.location.href='xabarlar.html'" class="w-full flex items-center gap-3 p-3 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-700 transition relative">
+          <i class="fas fa-comments text-blue-500"></i>
+          <span>Foydalanuvchi Xabarlar</span>
         </button>
         
 
@@ -216,6 +213,10 @@
       </h1>
       
       <div class="flex items-center gap-4">
+        <button onclick="window.location.href='bosh-sahifa.html'" class="w-10 h-10 rounded-full bg-white dark:bg-slate-700 shadow flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-600 transition">
+          <i class="fas fa-chart-bar text-green-500"></i>
+        </button>
+        
         <button id="toggleDark" class="w-10 h-10 rounded-full bg-white dark:bg-slate-700 shadow flex items-center justify-center">
           <i id="darkIcon" class="fas fa-moon text-indigo-600 dark:text-yellow-400"></i>
         </button>
@@ -232,35 +233,7 @@
       </div>
     </header>
     
-    <!-- Stats Cards -->
-    <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div class="stat-card bg-gradient-to-r from-indigo-500 to-indigo-600">
-        <div class="text-lg">Umumiy Qo'shilgan</div>
-        <div id="totalAdded" class="text-3xl font-bold mt-2">0 so'm</div>
-        <div class="flex items-center gap-2 mt-3">
-          <i class="fas fa-arrow-up"></i>
-          <span>Oxirgi 30 kun</span>
-        </div>
-      </div>
-      
-      <div class="stat-card bg-gradient-to-r from-emerald-500 to-emerald-600">
-        <div class="text-lg">Umumiy Ayirilgan</div>
-        <div id="totalSubtracted" class="text-3xl font-bold mt-2">0 so'm</div>
-        <div class="flex items-center gap-2 mt-3">
-          <i class="fas fa-arrow-down"></i>
-          <span>Oxirgi 30 kun</span>
-        </div>
-      </div>
-      
-      <div class="stat-card bg-gradient-to-r from-amber-500 to-amber-600">
-        <div class="text-lg">Umumiy Qarzdorlik</div>
-        <div id="totalDebt" class="text-3xl font-bold mt-2">0 so'm</div>
-        <div class="flex items-center gap-2 mt-3">
-          <i class="fas fa-users"></i>
-          <span id="debtorsCount">0 kishi</span>
-        </div>
-      </div>
-    </div>
+
     
     <!-- Search and Filters -->
     <div class="w-full bg-white dark:bg-slate-800 card p-6 mb-6">
@@ -276,6 +249,7 @@
             <option value="debt_high">Qarzi eng ko'p</option>
             <option value="debt_low">Qarzi eng kam</option>
             <option value="recent">So'nggi qo'shilganlar</option>
+            <option value="show_profiles">Profil chiqish</option>
           </select>
           
           <button id="addDebtorBtn" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg font-medium transition">
@@ -313,10 +287,17 @@
 
   </div>
   
-  <!-- Floating Button -->
-  <button id="floatingAddBtn" class="floating-btn bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
-    <i class="fas fa-plus text-2xl"></i>
+  <!-- Scroll to Top Button -->
+  <button id="scrollToTopBtn" class="floating-btn bg-gradient-to-r from-green-500 to-emerald-600 text-white" style="bottom: 110px;">
+    <i class="fas fa-arrow-up text-xl"></i>
   </button>
+  
+  <!-- Green Plus Button -->
+  <button id="greenPlusBtn" class="floating-btn bg-gradient-to-r from-indigo-500 to-purple-600 text-white" style="bottom: 30px;">
+    <i class="fas fa-plus text-xl"></i>
+  </button>
+  
+
   
   <!-- Debtor Modal -->
   <div id="debtorModal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50 hidden">
@@ -443,6 +424,96 @@
     </div>
   </div>
 
+  <!-- Green Plus Options Modal -->
+  <div id="greenPlusModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-bold text-slate-800 dark:text-white">Qo'shish</h3>
+          <button id="closeGreenPlusModal" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+             <div class="p-6">
+         <div class="space-y-4">
+           <button id="addFromProfileBtn" class="w-full flex items-center gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+             <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+               <i class="fas fa-user-plus text-xl"></i>
+             </div>
+             <div class="text-left">
+               <h4 class="font-semibold text-slate-800 dark:text-white">Profil dan qo'shish</h4>
+               <p class="text-sm text-slate-600 dark:text-slate-400">Mavjud profildan qarzdor qo'shish</p>
+             </div>
+           </button>
+           
+           <button id="addProductBtn" class="w-full flex items-center gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+             <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white">
+               <i class="fas fa-box text-xl"></i>
+             </div>
+             <div class="text-left">
+               <h4 class="font-semibold text-slate-800 dark:text-white">Mahsulot qo'shish</h4>
+               <p class="text-sm text-slate-600 dark:text-slate-400">Yangi mahsulot qo'shish</p>
+             </div>
+           </button>
+           
+           <button id="addToDebtBtn" class="w-full flex items-center gap-4 p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+             <div class="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white">
+               <i class="fas fa-plus-circle text-xl"></i>
+             </div>
+             <div class="text-left">
+               <h4 class="font-semibold text-slate-800 dark:text-white">Qolda qo'shish</h4>
+               <p class="text-sm text-slate-600 dark:text-slate-400">Mavjud qarzdorga qarz qo'shish</p>
+             </div>
+           </button>
+         </div>
+       </div>
+    </div>
+  </div>
+
+  <!-- Add Product Modal -->
+  <div id="addProductModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-bold text-slate-800 dark:text-white">Mahsulot qo'shish</h3>
+          <button id="closeAddProductModal" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+             <div class="p-6">
+         <form id="productForm" class="space-y-4">
+           <div>
+             <label class="block text-slate-700 dark:text-slate-300 mb-2">Mahsulot nomi</label>
+             <input id="productName" type="text" placeholder="Mahsulot nomini kiriting..." class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" required>
+           </div>
+           
+           <div>
+             <label class="block text-slate-700 dark:text-slate-300 mb-2">Narxi (so'm)</label>
+             <input id="productPrice" type="number" min="1" placeholder="Narxini kiriting..." class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" required>
+           </div>
+           
+           <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-lg font-medium transition mt-4">
+             <i class="fas fa-plus mr-2"></i> Mahsulot qo'shish
+           </button>
+         </form>
+         
+         <!-- Products List Section -->
+         <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+           <h4 class="text-lg font-semibold text-slate-800 dark:text-white mb-4">Mahsulotlar</h4>
+           <div id="productsList" class="space-y-3 max-h-60 overflow-y-auto">
+             <!-- Products will be loaded here -->
+             <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+               <i class="fas fa-box text-2xl mb-2"></i>
+               <p>Hali mahsulot qo'shilmagan</p>
+             </div>
+           </div>
+         </div>
+       </div>
+    </div>
+  </div>
+
   <!-- Username Setup Modal -->
   <div id="usernameSetupModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" style="display: none;">
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
@@ -520,10 +591,15 @@
       icon.classList.add('fa-sun');
     }
     
-    // Floating button
-    document.getElementById('floatingAddBtn').addEventListener('click', () => {
-      document.getElementById('addDebtorModal').classList.remove('hidden');
+    // Scroll to top button
+    document.getElementById('scrollToTopBtn').addEventListener('click', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
     });
+    
+
     
     // Add first debtor button
     document.getElementById('addFirstDebtor').addEventListener('click', () => {
@@ -534,6 +610,121 @@
     document.getElementById('closeAddModal').addEventListener('click', () => {
       document.getElementById('addDebtorModal').classList.add('hidden');
     });
+    
+    // Green Plus Button functionality
+    document.getElementById('greenPlusBtn').addEventListener('click', () => {
+      document.getElementById('greenPlusModal').classList.remove('hidden');
+    });
+    
+    // Close green plus modal
+    document.getElementById('closeGreenPlusModal').addEventListener('click', () => {
+      document.getElementById('greenPlusModal').classList.add('hidden');
+    });
+    
+         // Add from profile button
+     document.getElementById('addFromProfileBtn').addEventListener('click', () => {
+       document.getElementById('greenPlusModal').classList.add('hidden');
+       // Open the search modal for adding from profile
+       document.getElementById('viewDebtsModal').classList.remove('hidden');
+     });
+    
+                   // Add product button
+      document.getElementById('addProductBtn').addEventListener('click', () => {
+        document.getElementById('greenPlusModal').classList.add('hidden');
+        // Open the product modal
+        document.getElementById('addProductModal').classList.remove('hidden');
+      });
+     
+           // Add to debt button
+      document.getElementById('addToDebtBtn').addEventListener('click', () => {
+        document.getElementById('greenPlusModal').classList.add('hidden');
+        // Open the existing debtor modal for adding to existing debt
+        document.getElementById('addDebtorModal').classList.remove('hidden');
+      });
+    
+         // Close product modal
+     document.getElementById('closeAddProductModal').addEventListener('click', () => {
+       document.getElementById('addProductModal').classList.add('hidden');
+     });
+     
+     // Close product modal when clicking outside
+     document.getElementById('addProductModal').addEventListener('click', (e) => {
+       if (e.target.id === 'addProductModal') {
+         document.getElementById('addProductModal').classList.add('hidden');
+       }
+     });
+     
+           // Handle product form submission
+      document.getElementById('productForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const productName = document.getElementById('productName').value;
+        const productPrice = document.getElementById('productPrice').value;
+        
+        // Add product to the list
+        addProductToList(productName, productPrice);
+        
+        // Reset form
+        document.getElementById('productForm').reset();
+        
+        // Show success message
+        alert('Mahsulot muvaffaqiyatli qo\'shildi!');
+      });
+      
+      // Function to add product to the list
+      function addProductToList(name, price) {
+        const productsList = document.getElementById('productsList');
+        
+        // Remove the "no products" message if it exists
+        const noProductsMsg = productsList.querySelector('.text-center');
+        if (noProductsMsg) {
+          noProductsMsg.remove();
+        }
+        
+        // Create product item
+        const productItem = document.createElement('div');
+        productItem.className = 'flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600';
+        productItem.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-sm">
+              <i class="fas fa-box"></i>
+            </div>
+            <div>
+              <h5 class="font-medium text-slate-800 dark:text-white">${name}</h5>
+              <p class="text-sm text-slate-600 dark:text-slate-400">${price} so'm</p>
+            </div>
+          </div>
+          <button class="text-red-500 hover:text-red-700 dark:hover:text-red-400" onclick="removeProduct(this)">
+            <i class="fas fa-trash"></i>
+          </button>
+        `;
+        
+        productsList.appendChild(productItem);
+      }
+      
+      // Function to remove product
+      window.removeProduct = function(button) {
+        if (confirm('Bu mahsulotni o\'chirishni xohlaysizmi?')) {
+          button.closest('div').remove();
+          
+          // Show "no products" message if list is empty
+          const productsList = document.getElementById('productsList');
+          if (productsList.children.length === 0) {
+            productsList.innerHTML = `
+              <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                <i class="fas fa-box text-2xl mb-2"></i>
+                <p>Hali mahsulot qo'shilmagan</p>
+              </div>
+            `;
+          }
+        }
+      };
+     
+     // Close modal when clicking outside
+     document.getElementById('greenPlusModal').addEventListener('click', (e) => {
+       if (e.target.id === 'greenPlusModal') {
+         document.getElementById('greenPlusModal').classList.add('hidden');
+       }
+     });
     
 
     
