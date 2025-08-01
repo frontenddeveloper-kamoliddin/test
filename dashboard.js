@@ -47,6 +47,7 @@ try {
 // Global variables
 let addedSearchUsers = [];
 let allUsers = [];
+let userProducts = []; // Add this line to store user products
 
 // Global variable to track if debt has been written
 let debtWritten = false;
@@ -57,6 +58,10 @@ let usernameValidationState = {
   isAvailable: false,
   isChecking: false
 };
+
+// Loader state management
+let isLoading = false;
+let loaderTimeout = null;
 
 // Cyrillic to Latin conversion mapping
 const cyrillicToLatin = {
@@ -105,6 +110,68 @@ function enhancedSearch(text, searchTerm) {
 // Check network connectivity
 function checkNetworkConnectivity() {
   return navigator.onLine;
+}
+
+// Loader spinner functions
+function showLoader(message = 'Yuklanmoqda...') {
+  if (isLoading) return; // Prevent multiple loaders
+  
+  isLoading = true;
+  
+  // Create loader element
+  const loader = document.createElement('div');
+  loader.id = 'globalLoader';
+  loader.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm';
+  
+  loader.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+      <div class="loader mx-auto mb-4"></div>
+      <p class="text-slate-700 dark:text-slate-300 font-medium">${message}</p>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Internet aloqasi sekin...</p>
+    </div>
+  `;
+  
+  document.body.appendChild(loader);
+  
+  // Auto-hide after 30 seconds to prevent infinite loading
+  loaderTimeout = setTimeout(() => {
+    hideLoader();
+    showNotification('Amal vaqt o\'tib ketdi. Iltimos, qaytadan urinib ko\'ring.', 'error');
+  }, 30000);
+}
+
+function hideLoader() {
+  if (!isLoading) return;
+  
+  isLoading = false;
+  
+  if (loaderTimeout) {
+    clearTimeout(loaderTimeout);
+    loaderTimeout = null;
+  }
+  
+  const loader = document.getElementById('globalLoader');
+  if (loader) {
+    loader.remove();
+  }
+}
+
+// Enhanced network-aware operation wrapper
+async function withLoader(operation, message = 'Yuklanmoqda...') {
+  const isOnline = checkNetworkConnectivity();
+  
+  if (!isOnline) {
+    showLoader(message);
+  }
+  
+  try {
+    const result = await operation();
+    hideLoader();
+    return result;
+  } catch (error) {
+    hideLoader();
+    throw error;
+  }
 }
 
 // Username validation functions
@@ -322,15 +389,28 @@ function showNetworkError() {
   showNotification('Internet aloqasi yo\'q. Iltimos, internet aloqasini tekshiring.', 'error');
 }
 
-// Retry Firebase operation with exponential backoff
-async function retryFirebaseOperation(operation, maxRetries = 3) {
+// Retry Firebase operation with exponential backoff and loader
+async function retryFirebaseOperation(operation, maxRetries = 3, showLoaderOnRetry = true) {
+  const isOnline = checkNetworkConnectivity();
+  
+  if (!isOnline && showLoaderOnRetry) {
+    showLoader('Qayta urinilmoqda...');
+  }
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await operation();
+      const result = await operation();
+      if (!isOnline && showLoaderOnRetry) {
+        hideLoader();
+      }
+      return result;
     } catch (error) {
       console.error(`Firebase operation attempt ${attempt} failed:`, error);
       
       if (attempt === maxRetries) {
+        if (!isOnline && showLoaderOnRetry) {
+          hideLoader();
+        }
         throw error;
       }
       
@@ -370,6 +450,7 @@ onAuthStateChanged(auth, async (user) => {
       loadUserTotals(); // Load totals from Firebase first
       loadDebtors();
       loadAddedSearchUsers();
+      loadUserProducts(); // Load user products
       loadAllUsers();
       checkNotifications();
       setupNotificationListener();
@@ -455,7 +536,9 @@ if (debtorForm) {
   debtorForm.onsubmit = async (e) => {
   e.preventDefault();
   const name = document.getElementById("debtorName").value.trim();
-  const product = document.getElementById("debtorProduct").value.trim();
+  const productSelect = document.getElementById("debtorProduct").value.trim();
+  const productCustom = document.getElementById("debtorProductCustom").value.trim();
+  const product = productSelect || productCustom;
   let count = parseInt(document.getElementById("debtorCount").value);
   let price = parseInt(document.getElementById("debtorPrice").value);
   const note = document.getElementById("debtorNote").value.trim();
@@ -538,48 +621,48 @@ async function loadDebtors() {
     return;
   }
   
-  const searchInput = document.getElementById("searchInput");
-  const filterSelect = document.getElementById("filterSelect");
-  
-  const search = searchInput ? searchInput.value.toLowerCase() : "";
-  const filterType = filterSelect ? filterSelect.value : "";
-  
-  const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
-  
-  let debtors = [];
-  snapshot.forEach((doc) => {
-    let data = doc.data();
-    data.id = doc.id;
-    if (data.userId === user.uid) {
-      debtors.push(data);
-    }
-  });
-  
-  // Add search users
-  if (typeof addedSearchUsers !== 'undefined' && Array.isArray(addedSearchUsers)) {
-    addedSearchUsers.forEach(user => {
-      const debtor = snapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id }))
-        .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
-      if (debtor && !debtors.some(d => d.id === debtor.id)) {
-        debtors.push(debtor);
+  return await withLoader(async () => {
+    const searchInput = document.getElementById("searchInput");
+    const filterSelect = document.getElementById("filterSelect");
+    
+    const search = searchInput ? searchInput.value.toLowerCase() : "";
+    const filterType = filterSelect ? filterSelect.value : "";
+    
+    const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")), 3, false);
+    
+    let debtors = [];
+    snapshot.forEach((doc) => {
+      let data = doc.data();
+      data.id = doc.id;
+      if (data.userId === user.uid) {
+        debtors.push(data);
       }
     });
-  }
-  
-  if (search) {
-    debtors = debtors.filter((d) => enhancedSearch(d.name, search));
-  }
-  
-  // Apply filters
-  debtors = filterDebtors(debtors, filterType);
-  
-  renderDebtors(debtors);
-  
-  // Update totals after loading debtors
-  await updateUserTotals();
-  
-
+    
+    // Add search users
+    if (typeof addedSearchUsers !== 'undefined' && Array.isArray(addedSearchUsers)) {
+      addedSearchUsers.forEach(user => {
+        const debtor = snapshot.docs
+          .map(doc => ({ ...doc.data(), id: doc.id }))
+          .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
+        if (debtor && !debtors.some(d => d.id === debtor.id)) {
+          debtors.push(debtor);
+        }
+      });
+    }
+    
+    if (search) {
+      debtors = debtors.filter((d) => enhancedSearch(d.name, search));
+    }
+    
+    // Apply filters
+    debtors = filterDebtors(debtors, filterType);
+    
+    renderDebtors(debtors);
+    
+    // Update totals after loading debtors
+    await updateUserTotals();
+  }, 'Qarzdorlar yuklanmoqda...');
 }
 
 // Filter debtors
@@ -1058,59 +1141,61 @@ function showDeleteConfirmationModal(debtor) {
 
 // Sidebar user info
 async function showSidebarUser(user) {
-  const userRef = doc(db, "users", user.uid);
-  const userSnap = await getDoc(userRef);
-  
-  let sidebarNumber, sidebarUserCode, userName, username;
-  if (userSnap.exists()) {
-    const data = userSnap.data();
-    sidebarNumber = data.sidebarNumber || Math.floor(Math.random() * 999) + 1;
-    sidebarUserCode = data.sidebarUserCode || generateUserCode();
-    userName = data.name || user.displayName || "Foydalanuvchi";
-    username = data.username || null;
+  return await withLoader(async () => {
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
     
-    // Update if missing
-    if (!data.sidebarNumber || !data.sidebarUserCode) {
-      await updateDoc(userRef, {
+    let sidebarNumber, sidebarUserCode, userName, username;
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      sidebarNumber = data.sidebarNumber || Math.floor(Math.random() * 999) + 1;
+      sidebarUserCode = data.sidebarUserCode || generateUserCode();
+      userName = data.name || user.displayName || "Foydalanuvchi";
+      username = data.username || null;
+      
+      // Update if missing
+      if (!data.sidebarNumber || !data.sidebarUserCode) {
+        await retryFirebaseOperation(() => updateDoc(userRef, {
+          sidebarNumber,
+          sidebarUserCode,
+          name: userName
+        }), 3, false);
+      }
+    } else {
+      sidebarNumber = Math.floor(Math.random() * 999) + 1;
+      sidebarUserCode = generateUserCode();
+      userName = user.displayName || "Foydalanuvchi";
+      username = null;
+      await retryFirebaseOperation(() => setDoc(userRef, {
+        name: userName,
         sidebarNumber,
         sidebarUserCode,
-        name: userName
-      });
+        addedSearchUsers: []
+      }), 3, false);
     }
-  } else {
-    sidebarNumber = Math.floor(Math.random() * 999) + 1;
-    sidebarUserCode = generateUserCode();
-    userName = user.displayName || "Foydalanuvchi";
-    username = null;
-    await setDoc(userRef, {
-      name: userName,
-      sidebarNumber,
-      sidebarUserCode,
-      addedSearchUsers: []
-    });
-  }
   
-  // Update sidebar UI
-  const sidebarUserDiv = document.getElementById("sidebarUserInfo");
-  if (sidebarUserDiv) {
-    sidebarUserDiv.innerHTML = `
-      <div class="flex items-center gap-3">
-        <div class="relative">
-          <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-            ${userName.charAt(0)}
+    // Update sidebar UI
+    const sidebarUserDiv = document.getElementById("sidebarUserInfo");
+    if (sidebarUserDiv) {
+      sidebarUserDiv.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+              ${userName.charAt(0)}
+            </div>
+          </div>
+          <div>
+            <div class="font-bold text-lg flex items-center gap-2">
+              <span class="truncate max-w-[120px]">${userName}</span>
+              <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
+            </div>
+            ${username ? `<div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">@${username}</div>` : ''}
+            <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
           </div>
         </div>
-        <div>
-          <div class="font-bold text-lg flex items-center gap-2">
-            <span class="truncate max-w-[120px]">${userName}</span>
-            <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
-          </div>
-          ${username ? `<div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">@${username}</div>` : ''}
-          <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
-        </div>
-      </div>
-    `;
-  }
+      `;
+    }
+  }, 'Foydalanuvchi ma\'lumotlari yuklanmoqda...');
 }
 
 // Generate user code
@@ -1132,6 +1217,7 @@ function initApp() {
   document.getElementById('filterSelect')?.addEventListener('change', loadDebtors);
   document.getElementById('addDebtorBtn')?.addEventListener('click', () => {
     document.getElementById('addDebtorModal').classList.remove('hidden');
+    populateProductDropdown();
   });
   document.getElementById('viewDebtsBtn')?.addEventListener('click', () => {
     document.getElementById('viewDebtsModal').classList.remove('hidden');
@@ -1190,6 +1276,7 @@ function initApp() {
   loadUserTotals();
   loadAllUsers();
   loadAddedSearchUsers();
+  loadUserProducts(); // Load user products
   checkNotifications();
   
   // Setup listeners
@@ -1781,8 +1868,11 @@ function openDebtorModal(debtor) {
           
           <form id="addDebtForm" class="flex flex-col gap-3 mb-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input type="text" placeholder="Mahsulot nomi" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
-              <input type="number" placeholder="Mahsulot soni" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
+              <select id="debtorModalProduct" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition">
+                <option value="">Mahsulot tanlang yoki yozing</option>
+              </select>
+              <input id="debtorModalProductCustom" type="text" placeholder="Yangi mahsulot nomi" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition hidden">
+              <input type="number" placeholder="Mahsulot soni (ixtiyoriy)" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
               <input type="number" min="1" placeholder="Mahsulot narxi" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" required autocomplete="off">
               <input type="text" placeholder="Izoh (ixtiyoriy)" class="p-3 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-900 dark:text-gray-100 transition" autocomplete="off">
             </div>
@@ -1856,6 +1946,9 @@ function openDebtorModal(debtor) {
   
   document.body.appendChild(modal);
   
+  // Populate product dropdown in the modal
+  populateDebtorModalProductDropdown();
+  
   // Close modal
   modal.querySelector('#closeDebtorModal').onclick = () => modal.remove();
   
@@ -1870,10 +1963,12 @@ function openDebtorModal(debtor) {
   modal.querySelector('#addDebtForm').onsubmit = async (e) => {
     e.preventDefault();
     
-    const product = e.target[0].value.trim();
-    let count = parseInt(e.target[1].value);
-    let price = parseInt(e.target[2].value);
-    const note = e.target[3].value.trim();
+    const productSelect = e.target[0].value.trim();
+    const productCustom = e.target[1].value.trim();
+    const product = productSelect || productCustom;
+    let count = parseInt(e.target[2].value);
+    let price = parseInt(e.target[3].value);
+    const note = e.target[4].value.trim();
 
     price = price * 1;
     let amount;
@@ -1982,33 +2077,30 @@ async function loadUserTotals() {
   const user = auth.currentUser;
   if (!user) return;
 
-  if (!checkNetworkConnectivity()) {
-    showNetworkError();
-    return;
-  }
-
-  try {
-    // First try to get from user document
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-    
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      if (userData.totalAdded !== undefined && userData.totalSubtracted !== undefined && userData.totalDebt !== undefined) {
-        // Update UI with stored totals
-        updateTotalsUI(userData.totalAdded, userData.totalSubtracted, userData.totalDebt, userData.debtorsCount || 0);
-        return;
+  return await withLoader(async () => {
+    try {
+      // First try to get from user document
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (userData.totalAdded !== undefined && userData.totalSubtracted !== undefined && userData.totalDebt !== undefined) {
+          // Update UI with stored totals
+          updateTotalsUI(userData.totalAdded, userData.totalSubtracted, userData.totalDebt, userData.debtorsCount || 0);
+          return;
+        }
+      }
+      
+      // If no stored totals, calculate from debtors
+      await updateUserTotals();
+    } catch (error) {
+      console.error('Error loading user totals:', error);
+      if (error.code === 'unavailable' || error.code === 'permission-denied') {
+        showNetworkError();
       }
     }
-    
-    // If no stored totals, calculate from debtors
-    await updateUserTotals();
-  } catch (error) {
-    console.error('Error loading user totals:', error);
-    if (error.code === 'unavailable' || error.code === 'permission-denied') {
-      showNetworkError();
-    }
-  }
+  }, 'Ma\'lumotlar yuklanmoqda...');
 }
 
 // Update totals UI
@@ -2032,60 +2124,57 @@ async function updateUserTotals() {
   const user = auth.currentUser;
   if (!user) return;
 
-  if (!checkNetworkConnectivity()) {
-    showNetworkError();
-    return;
-  }
+  return await withLoader(async () => {
+    try {
+      // Get all debtors for this user
+      const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")), 3, false);
+      let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.userId === user.uid) {
+          // Filter history to only include transactions created by current user
+          const userHistory = (data.history || []).filter(h => h.authorId === user.uid);
+          
+          // Calculate totals only from user's own transactions
+          userHistory.forEach(h => {
+            if (h.type === "add") totalAdded += h.amount || 0;
+            if (h.type === "sub") totalSubtracted += h.amount || 0;
+          });
+        }
+      });
 
-  try {
-    // Get all debtors for this user
-    const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
-    let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
-    
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.userId === user.uid) {
-        // Filter history to only include transactions created by current user
-        const userHistory = (data.history || []).filter(h => h.authorId === user.uid);
-        
-        // Calculate totals only from user's own transactions
-        userHistory.forEach(h => {
-          if (h.type === "add") totalAdded += h.amount || 0;
-          if (h.type === "sub") totalSubtracted += h.amount || 0;
-        });
+      // Removed addedSearchUsers logic - only show current user's transactions
+
+      totalDebt = totalAdded - totalSubtracted;
+
+      // Count debtors
+      const debtorsCount = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.userId === user.uid;
+      }).length;
+
+      // Update user document with totals
+      const userRef = doc(db, "users", user.uid);
+      await retryFirebaseOperation(() => updateDoc(userRef, {
+        totalAdded,
+        totalSubtracted,
+        totalDebt,
+        debtorsCount,
+        lastUpdated: Timestamp.now()
+      }), 3, false);
+
+      // Update UI
+      updateTotalsUI(totalAdded, totalSubtracted, totalDebt, debtorsCount);
+      
+      return { totalAdded, totalSubtracted, totalDebt, debtorsCount };
+    } catch (error) {
+      console.error('Error updating user totals:', error);
+      if (error.code === 'unavailable' || error.code === 'permission-denied') {
+        showNetworkError();
       }
-    });
-
-    // Removed addedSearchUsers logic - only show current user's transactions
-
-    totalDebt = totalAdded - totalSubtracted;
-
-    // Count debtors
-    const debtorsCount = snapshot.docs.filter(doc => {
-      const data = doc.data();
-      return data.userId === user.uid;
-    }).length;
-
-    // Update user document with totals
-    const userRef = doc(db, "users", user.uid);
-    await retryFirebaseOperation(() => updateDoc(userRef, {
-      totalAdded,
-      totalSubtracted,
-      totalDebt,
-      debtorsCount,
-      lastUpdated: Timestamp.now()
-    }));
-
-    // Update UI
-    updateTotalsUI(totalAdded, totalSubtracted, totalDebt, debtorsCount);
-    
-    return { totalAdded, totalSubtracted, totalDebt, debtorsCount };
-  } catch (error) {
-    console.error('Error updating user totals:', error);
-    if (error.code === 'unavailable' || error.code === 'permission-denied') {
-      showNetworkError();
     }
-  }
+  }, 'Ma\'lumotlar yangilanmoqda...');
 }
 
 // Initialize the app when DOM is loaded
@@ -2096,21 +2185,23 @@ document.addEventListener('DOMContentLoaded', initApp);
 
 // Load all users from Firebase
 async function loadAllUsers() {
-  try {
-    const usersSnap = await retryFirebaseOperation(() => getDocs(collection(db, "users")));
-    allUsers = usersSnap.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: data.sidebarUserCode || doc.id,
-        name: data.name || "Noma'lum",
-        number: data.sidebarNumber || "",
-        userId: doc.id,
-        username: data.username || null
-      };
-    });
-  } catch (error) {
-    console.error('Error loading users:', error);
-  }
+  return await withLoader(async () => {
+    try {
+      const usersSnap = await retryFirebaseOperation(() => getDocs(collection(db, "users")), 3, false);
+      allUsers = usersSnap.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: data.sidebarUserCode || doc.id,
+          name: data.name || "Noma'lum",
+          number: data.sidebarNumber || "",
+          userId: doc.id,
+          username: data.username || null
+        };
+      });
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  }, 'Foydalanuvchilar yuklanmoqda...');
 }
 
 
@@ -2210,16 +2301,18 @@ async function loadAddedSearchUsers() {
   const user = auth.currentUser;
   if (!user) return;
   
-  try {
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-    if (snap.exists() && Array.isArray(snap.data().addedSearchUsers)) {
-      addedSearchUsers = snap.data().addedSearchUsers;
-      renderAddedSearchUsers();
+  return await withLoader(async () => {
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const snap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
+      if (snap.exists() && Array.isArray(snap.data().addedSearchUsers)) {
+        addedSearchUsers = snap.data().addedSearchUsers;
+        renderAddedSearchUsers();
+      }
+    } catch (error) {
+      console.error('Error loading added search users:', error);
     }
-  } catch (error) {
-    console.error('Error loading added search users:', error);
-  }
+  }, 'Qidiruv foydalanuvchilari yuklanmoqda...');
 }
 
 // Save added search users to Firebase
@@ -2227,12 +2320,14 @@ async function saveAddedSearchUsers() {
   const user = auth.currentUser;
   if (!user) return;
   
-  try {
-    const userRef = doc(db, "users", user.uid);
-    await updateDoc(userRef, { addedSearchUsers });
-  } catch (error) {
-    console.error('Error saving added search users:', error);
-  }
+  return await withLoader(async () => {
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await retryFirebaseOperation(() => updateDoc(userRef, { addedSearchUsers }), 3, false);
+    } catch (error) {
+      console.error('Error saving added search users:', error);
+    }
+  }, 'Qidiruv foydalanuvchilari saqlanmoqda...');
 }
 
 // Render added search users
@@ -2426,5 +2521,341 @@ function getTimeAgo(date) {
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
+
+// Load user products from Firebase
+async function loadUserProducts() {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  return await withLoader(async () => {
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const snap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
+      if (snap.exists() && Array.isArray(snap.data().products)) {
+        userProducts = snap.data().products;
+        renderProductsList();
+      }
+    } catch (error) {
+      console.error('Error loading user products:', error);
+    }
+  }, 'Mahsulotlar yuklanmoqda...');
+}
+
+// Save user products to Firebase
+async function saveUserProducts() {
+  const user = auth.currentUser;
+  if (!user) return;
+  
+  return await withLoader(async () => {
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await retryFirebaseOperation(() => updateDoc(userRef, { products: userProducts }), 3, false);
+    } catch (error) {
+      console.error('Error saving user products:', error);
+    }
+  }, 'Mahsulotlar saqlanmoqda...');
+}
+
+// Render products list
+function renderProductsList() {
+  const productsList = document.getElementById('productsList');
+  if (!productsList) return;
+  
+  if (userProducts.length === 0) {
+    productsList.innerHTML = `
+      <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+        <i class="fas fa-box text-2xl mb-2"></i>
+        <p>Hali mahsulot qo'shilmagan</p>
+      </div>
+    `;
+  } else {
+    productsList.innerHTML = '';
+    userProducts.forEach((product, index) => {
+      const productItem = document.createElement('div');
+      productItem.className = 'flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600';
+      productItem.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-sm">
+            <i class="fas fa-box"></i>
+          </div>
+          <div>
+            <h5 class="font-medium text-slate-800 dark:text-white">${product.name}</h5>
+            <p class="text-sm text-slate-600 dark:text-slate-400">${product.price} so'm</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400" onclick="editProduct(${index})">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="text-red-500 hover:text-red-700 dark:hover:text-red-400" onclick="removeProduct(${index})">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      `;
+      productsList.appendChild(productItem);
+    });
+  }
+  
+  // Also populate the dropdown in the debtor form
+  populateProductDropdown();
+}
+
+// Add product to Firebase
+async function addProductToFirebase(name, price) {
+  const user = auth.currentUser;
+  if (!user) {
+    showNotification('Avval tizimga kirishingiz kerak!', 'error');
+    return;
+  }
+  
+  return await withLoader(async () => {
+    // Check if product already exists
+    const existingProduct = userProducts.find(p => p.name.toLowerCase() === name.toLowerCase());
+    if (existingProduct) {
+      showNotification('Bu mahsulot allaqachon mavjud!', 'error');
+      return;
+    }
+    
+    // Add to array
+    userProducts.push({
+      name: name,
+      price: price,
+      createdAt: new Date()
+    });
+    
+    // Save to Firebase
+    await saveUserProducts();
+    
+    // Re-render the list
+    renderProductsList();
+    
+    showNotification('Mahsulot muvaffaqiyatli qo\'shildi!', 'success');
+  }, 'Mahsulot qo\'shilmoqda...');
+}
+
+// Populate product dropdown
+function populateProductDropdown() {
+  const productSelect = document.getElementById('debtorProduct');
+  const customProductInput = document.getElementById('debtorProductCustom');
+  
+  if (!productSelect) return;
+  
+  // Clear existing options except the first one
+  productSelect.innerHTML = '<option value="">Mahsulot tanlang yoki yozing</option>';
+  
+  // Add saved products
+  userProducts.forEach(product => {
+    const option = document.createElement('option');
+    option.value = product.name;
+    option.textContent = `${product.name} (${product.price} so'm)`;
+    productSelect.appendChild(option);
+  });
+  
+  // Remove existing event listener to prevent duplicates
+  const newProductSelect = productSelect.cloneNode(true);
+  productSelect.parentNode.replaceChild(newProductSelect, productSelect);
+  
+  // Add event listener for custom product
+  newProductSelect.addEventListener('change', function() {
+    if (this.value === '') {
+      // Show custom input for new product
+      if (customProductInput) {
+        customProductInput.classList.remove('hidden');
+        customProductInput.focus();
+      }
+    } else {
+      // Hide custom input if product is selected
+      if (customProductInput) {
+        customProductInput.classList.add('hidden');
+        customProductInput.value = '';
+      }
+      
+      // Auto-fill price if product is selected
+      const selectedProduct = userProducts.find(p => p.name === this.value);
+      if (selectedProduct) {
+        const priceInput = document.getElementById('debtorPrice');
+        if (priceInput) {
+          priceInput.value = selectedProduct.price;
+        }
+      }
+    }
+  });
+}
+
+// Populate product dropdown in debtor modal
+function populateDebtorModalProductDropdown() {
+  const productSelect = document.getElementById('debtorModalProduct');
+  const customProductInput = document.getElementById('debtorModalProductCustom');
+  
+  if (!productSelect) return;
+  
+  // Clear existing options except the first one
+  productSelect.innerHTML = '<option value="">Mahsulot tanlang yoki yozing</option>';
+  
+  // Add saved products
+  userProducts.forEach(product => {
+    const option = document.createElement('option');
+    option.value = product.name;
+    option.textContent = `${product.name} (${product.price} so'm)`;
+    productSelect.appendChild(option);
+  });
+  
+  // Remove existing event listener to prevent duplicates
+  const newProductSelect = productSelect.cloneNode(true);
+  productSelect.parentNode.replaceChild(newProductSelect, productSelect);
+  
+  // Add event listener for custom product
+  newProductSelect.addEventListener('change', function() {
+    if (this.value === '') {
+      // Show custom input for new product
+      if (customProductInput) {
+        customProductInput.classList.remove('hidden');
+        customProductInput.focus();
+      }
+    } else {
+      // Hide custom input if product is selected
+      if (customProductInput) {
+        customProductInput.classList.add('hidden');
+        customProductInput.value = '';
+      }
+      
+      // Auto-fill price if product is selected
+      const selectedProduct = userProducts.find(p => p.name === this.value);
+      if (selectedProduct) {
+        const priceInput = newProductSelect.closest('form').querySelector('input[type="number"][min="1"]');
+        if (priceInput) {
+          priceInput.value = selectedProduct.price;
+        }
+      }
+    }
+  });
+}
+
+window.addProductToFirebase = addProductToFirebase;
+
+// Edit product function
+window.editProduct = async function(index) {
+  const product = userProducts[index];
+  if (!product) return;
+  
+  // Create edit modal
+  const modal = document.createElement('div');
+  modal.id = 'editProductModal';
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+  
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xl font-bold text-slate-800 dark:text-white">Mahsulotni tahrirlash</h3>
+          <button id="closeEditProductModal" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <div class="p-6">
+        <form id="editProductForm" class="space-y-4">
+          <div>
+            <label class="block text-slate-700 dark:text-slate-300 mb-2">Mahsulot nomi</label>
+            <input id="editProductName" type="text" value="${product.name}" placeholder="Mahsulot nomini kiriting..." class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" required>
+          </div>
+          
+          <div>
+            <label class="block text-slate-700 dark:text-slate-300 mb-2">Narxi (so'm)</label>
+            <input id="editProductPrice" type="number" min="1" value="${product.price}" placeholder="Narxini kiriting..." class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" required>
+          </div>
+          
+          <div class="flex gap-3 pt-4">
+            <button type="button" id="cancelEditProduct" class="flex-1 bg-slate-300 hover:bg-slate-400 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-800 dark:text-slate-200 px-4 py-3 rounded-lg font-semibold transition">
+              Bekor qilish
+            </button>
+            <button type="submit" class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-3 rounded-lg font-semibold transition">
+              <i class="fas fa-save mr-2"></i> Saqlash
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Close modal
+  modal.querySelector('#closeEditProductModal').onclick = () => modal.remove();
+  modal.querySelector('#cancelEditProduct').onclick = () => modal.remove();
+  
+  // Close modal when clicking outside
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      modal.remove();
+    }
+  });
+  
+  // Handle form submission
+  modal.querySelector('#editProductForm').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const newName = document.getElementById('editProductName').value.trim();
+    const newPrice = parseInt(document.getElementById('editProductPrice').value);
+    
+    if (!newName || !newPrice) {
+      showNotification('Iltimos, mahsulot nomi va narxini kiriting!', 'error');
+      return;
+    }
+    
+    // Check if name already exists (excluding current product)
+    const existingProduct = userProducts.find((p, i) => i !== index && p.name.toLowerCase() === newName.toLowerCase());
+    if (existingProduct) {
+      showNotification('Bu nomli mahsulot allaqachon mavjud!', 'error');
+      return;
+    }
+    
+    await withLoader(async () => {
+      try {
+        // Update product
+        userProducts[index] = {
+          ...product,
+          name: newName,
+          price: newPrice,
+          updatedAt: new Date()
+        };
+        
+        // Save to Firebase
+        await saveUserProducts();
+        
+        // Re-render the list
+        renderProductsList();
+        
+        showNotification('Mahsulot muvaffaqiyatli yangilandi!', 'success');
+        modal.remove();
+      } catch (error) {
+        console.error('Error updating product:', error);
+        showNotification('Mahsulotni yangilashda xatolik yuz berdi!', 'error');
+      }
+    }, 'Mahsulot yangilanmoqda...');
+  };
+}
+
+window.renderProductsList = renderProductsList;
+window.populateProductDropdown = populateProductDropdown;
+window.populateDebtorModalProductDropdown = populateDebtorModalProductDropdown;
+
+// Remove product function (for compatibility with HTML onclick)
+window.removeProduct = async function(index) {
+  if (confirm('Bu mahsulotni o\'chirishni xohlaysizmi?')) {
+    await withLoader(async () => {
+      // Remove from array
+      userProducts.splice(index, 1);
+      
+      // Save to Firebase
+      await saveUserProducts();
+      
+      // Re-render the list
+      renderProductsList();
+      
+      showNotification('Mahsulot muvaffaqiyatli o\'chirildi!', 'success');
+    }, 'Mahsulot o\'chirilmoqda...');
+  }
+};
 
 

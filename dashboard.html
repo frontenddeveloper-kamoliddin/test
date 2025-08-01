@@ -335,7 +335,10 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-slate-700 dark:text-slate-300 mb-2">Mahsulot</label>
-              <input id="debtorProduct" type="text" placeholder="Mahsulot nomi" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white">
+              <select id="debtorProduct" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white">
+                <option value="">Mahsulot tanlang yoki yozing</option>
+              </select>
+              <input id="debtorProductCustom" type="text" placeholder="Yangi mahsulot nomi" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white mt-2 hidden">
             </div>
             
             <div>
@@ -604,6 +607,7 @@
     // Add first debtor button
     document.getElementById('addFirstDebtor').addEventListener('click', () => {
       document.getElementById('addDebtorModal').classList.remove('hidden');
+      populateProductDropdown();
     });
     
     // Close modals
@@ -633,6 +637,8 @@
         document.getElementById('greenPlusModal').classList.add('hidden');
         // Open the product modal
         document.getElementById('addProductModal').classList.remove('hidden');
+        // Load products when modal opens
+        renderProductsList();
       });
      
            // Add to debt button
@@ -655,69 +661,29 @@
      });
      
            // Handle product form submission
-      document.getElementById('productForm').addEventListener('submit', (e) => {
+      document.getElementById('productForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const productName = document.getElementById('productName').value;
         const productPrice = document.getElementById('productPrice').value;
         
-        // Add product to the list
-        addProductToList(productName, productPrice);
+        if (!productName || !productPrice) {
+          showNotification('Iltimos, mahsulot nomi va narxini kiriting!', 'error');
+          return;
+        }
+        
+        // Add product to Firebase
+        await addProductToFirebase(productName, parseInt(productPrice));
         
         // Reset form
         document.getElementById('productForm').reset();
         
-        // Show success message
-        alert('Mahsulot muvaffaqiyatli qo\'shildi!');
+        // Close modal after successful addition
+        document.getElementById('addProductModal').classList.add('hidden');
       });
       
-      // Function to add product to the list
-      function addProductToList(name, price) {
-        const productsList = document.getElementById('productsList');
-        
-        // Remove the "no products" message if it exists
-        const noProductsMsg = productsList.querySelector('.text-center');
-        if (noProductsMsg) {
-          noProductsMsg.remove();
-        }
-        
-        // Create product item
-        const productItem = document.createElement('div');
-        productItem.className = 'flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600';
-        productItem.innerHTML = `
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white text-sm">
-              <i class="fas fa-box"></i>
-            </div>
-            <div>
-              <h5 class="font-medium text-slate-800 dark:text-white">${name}</h5>
-              <p class="text-sm text-slate-600 dark:text-slate-400">${price} so'm</p>
-            </div>
-          </div>
-          <button class="text-red-500 hover:text-red-700 dark:hover:text-red-400" onclick="removeProduct(this)">
-            <i class="fas fa-trash"></i>
-          </button>
-        `;
-        
-        productsList.appendChild(productItem);
-      }
+
       
-      // Function to remove product
-      window.removeProduct = function(button) {
-        if (confirm('Bu mahsulotni o\'chirishni xohlaysizmi?')) {
-          button.closest('div').remove();
-          
-          // Show "no products" message if list is empty
-          const productsList = document.getElementById('productsList');
-          if (productsList.children.length === 0) {
-            productsList.innerHTML = `
-              <div class="text-center text-slate-500 dark:text-slate-400 py-4">
-                <i class="fas fa-box text-2xl mb-2"></i>
-                <p>Hali mahsulot qo'shilmagan</p>
-              </div>
-            `;
-          }
-        }
-      };
+
      
      // Close modal when clicking outside
      document.getElementById('greenPlusModal').addEventListener('click', (e) => {
