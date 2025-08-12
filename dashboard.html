@@ -101,7 +101,7 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-      z-index: 100;
+      z-index: 10;
       transition: all 0.3s ease;
     }
     
@@ -559,6 +559,8 @@
     </div>
   </div>
 
+
+
   <script type="module" src="dashboard.js"></script>
   <script>
     // Dark mode toggle
@@ -689,6 +691,13 @@
      document.getElementById('greenPlusModal').addEventListener('click', (e) => {
        if (e.target.id === 'greenPlusModal') {
          document.getElementById('greenPlusModal').classList.add('hidden');
+       }
+     });
+     
+     // Close change name modal when clicking outside
+     document.getElementById('changeNameModal').addEventListener('click', (e) => {
+       if (e.target.id === 'changeNameModal') {
+         document.getElementById('changeNameModal').classList.add('hidden');
        }
      });
     

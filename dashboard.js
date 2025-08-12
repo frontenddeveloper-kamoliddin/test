@@ -59,10 +59,6 @@ let usernameValidationState = {
   isChecking: false
 };
 
-// Loader state management
-let isLoading = false;
-let loaderTimeout = null;
-
 // Cyrillic to Latin conversion mapping
 const cyrillicToLatin = {
   'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
@@ -110,68 +106,6 @@ function enhancedSearch(text, searchTerm) {
 // Check network connectivity
 function checkNetworkConnectivity() {
   return navigator.onLine;
-}
-
-// Loader spinner functions
-function showLoader(message = 'Yuklanmoqda...') {
-  if (isLoading) return; // Prevent multiple loaders
-  
-  isLoading = true;
-  
-  // Create loader element
-  const loader = document.createElement('div');
-  loader.id = 'globalLoader';
-  loader.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm';
-  
-  loader.innerHTML = `
-    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
-      <div class="loader mx-auto mb-4"></div>
-      <p class="text-slate-700 dark:text-slate-300 font-medium">${message}</p>
-      <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">Internet aloqasi sekin...</p>
-    </div>
-  `;
-  
-  document.body.appendChild(loader);
-  
-  // Auto-hide after 30 seconds to prevent infinite loading
-  loaderTimeout = setTimeout(() => {
-    hideLoader();
-    showNotification('Amal vaqt o\'tib ketdi. Iltimos, qaytadan urinib ko\'ring.', 'error');
-  }, 30000);
-}
-
-function hideLoader() {
-  if (!isLoading) return;
-  
-  isLoading = false;
-  
-  if (loaderTimeout) {
-    clearTimeout(loaderTimeout);
-    loaderTimeout = null;
-  }
-  
-  const loader = document.getElementById('globalLoader');
-  if (loader) {
-    loader.remove();
-  }
-}
-
-// Enhanced network-aware operation wrapper
-async function withLoader(operation, message = 'Yuklanmoqda...') {
-  const isOnline = checkNetworkConnectivity();
-  
-  if (!isOnline) {
-    showLoader(message);
-  }
-  
-  try {
-    const result = await operation();
-    hideLoader();
-    return result;
-  } catch (error) {
-    hideLoader();
-    throw error;
-  }
 }
 
 // Username validation functions
@@ -389,28 +323,15 @@ function showNetworkError() {
   showNotification('Internet aloqasi yo\'q. Iltimos, internet aloqasini tekshiring.', 'error');
 }
 
-// Retry Firebase operation with exponential backoff and loader
-async function retryFirebaseOperation(operation, maxRetries = 3, showLoaderOnRetry = true) {
-  const isOnline = checkNetworkConnectivity();
-  
-  if (!isOnline && showLoaderOnRetry) {
-    showLoader('Qayta urinilmoqda...');
-  }
-  
+// Retry Firebase operation with exponential backoff
+async function retryFirebaseOperation(operation, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const result = await operation();
-      if (!isOnline && showLoaderOnRetry) {
-        hideLoader();
-      }
-      return result;
+      return await operation();
     } catch (error) {
       console.error(`Firebase operation attempt ${attempt} failed:`, error);
       
       if (attempt === maxRetries) {
-        if (!isOnline && showLoaderOnRetry) {
-          hideLoader();
-        }
         throw error;
       }
       
@@ -621,48 +542,48 @@ async function loadDebtors() {
     return;
   }
   
-  return await withLoader(async () => {
-    const searchInput = document.getElementById("searchInput");
-    const filterSelect = document.getElementById("filterSelect");
-    
-    const search = searchInput ? searchInput.value.toLowerCase() : "";
-    const filterType = filterSelect ? filterSelect.value : "";
-    
-    const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")), 3, false);
-    
-    let debtors = [];
-    snapshot.forEach((doc) => {
-      let data = doc.data();
-      data.id = doc.id;
-      if (data.userId === user.uid) {
-        debtors.push(data);
+  const searchInput = document.getElementById("searchInput");
+  const filterSelect = document.getElementById("filterSelect");
+  
+  const search = searchInput ? searchInput.value.toLowerCase() : "";
+  const filterType = filterSelect ? filterSelect.value : "";
+  
+  const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
+  
+  let debtors = [];
+  snapshot.forEach((doc) => {
+    let data = doc.data();
+    data.id = doc.id;
+    if (data.userId === user.uid) {
+      debtors.push(data);
+    }
+  });
+  
+  // Add search users
+  if (typeof addedSearchUsers !== 'undefined' && Array.isArray(addedSearchUsers)) {
+    addedSearchUsers.forEach(user => {
+      const debtor = snapshot.docs
+        .map(doc => ({ ...doc.data(), id: doc.id }))
+        .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
+      if (debtor && !debtors.some(d => d.id === debtor.id)) {
+        debtors.push(debtor);
       }
     });
-    
-    // Add search users
-    if (typeof addedSearchUsers !== 'undefined' && Array.isArray(addedSearchUsers)) {
-      addedSearchUsers.forEach(user => {
-        const debtor = snapshot.docs
-          .map(doc => ({ ...doc.data(), id: doc.id }))
-          .find(d => d.userId === user.id || d.code === user.id || d.id === user.id);
-        if (debtor && !debtors.some(d => d.id === debtor.id)) {
-          debtors.push(debtor);
-        }
-      });
-    }
-    
-    if (search) {
-      debtors = debtors.filter((d) => enhancedSearch(d.name, search));
-    }
-    
-    // Apply filters
-    debtors = filterDebtors(debtors, filterType);
-    
-    renderDebtors(debtors);
-    
-    // Update totals after loading debtors
-    await updateUserTotals();
-  }, 'Qarzdorlar yuklanmoqda...');
+  }
+  
+  if (search) {
+    debtors = debtors.filter((d) => enhancedSearch(d.name, search));
+  }
+  
+  // Apply filters
+  debtors = filterDebtors(debtors, filterType);
+  
+  renderDebtors(debtors);
+  
+  // Update totals after loading debtors
+  await updateUserTotals();
+  
+
 }
 
 // Filter debtors
@@ -716,8 +637,11 @@ function calculateTotalDebt(debtor) {
   let totalAdd = 0, totalSub = 0;
   
   userHistory.forEach((h) => {
-    if (h.type === "add") totalAdd += h.amount || 0;
-    if (h.type === "sub") totalSub += h.amount || 0;
+    // Only count non-deleted transactions
+    if (!h.deleted) {
+      if (h.type === "add") totalAdd += h.amount || 0;
+      if (h.type === "sub") totalSub += h.amount || 0;
+    }
   });
   
   return totalAdd - totalSub;
@@ -749,8 +673,8 @@ function renderDebtors(debtors) {
       // Filter history to only show transactions created by current user
       const userHistory = (debtor.history || []).filter(h => h.authorId === currentUserId || !h.authorId);
       
-      const totalAdded = userHistory.reduce((sum, h) => h.type === 'add' ? sum + (h.amount || 0) : sum, 0);
-      const totalSubtracted = userHistory.reduce((sum, h) => h.type === 'sub' ? sum + (h.amount || 0) : sum, 0);
+      const totalAdded = userHistory.reduce((sum, h) => !h.deleted && h.type === 'add' ? sum + (h.amount || 0) : sum, 0);
+      const totalSubtracted = userHistory.reduce((sum, h) => !h.deleted && h.type === 'sub' ? sum + (h.amount || 0) : sum, 0);
       const totalDebt = totalAdded - totalSubtracted;
       
       // Calculate progress percentage
@@ -922,6 +846,21 @@ function showPaymentModal(debtor) {
   modal.id = 'paymentModal';
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
   
+  // Hide main dashboard elements when modal opens
+  const elementsToHide = [
+    document.getElementById('debtorsList'),
+    document.querySelector('.w-full.bg-white.dark\\:bg-slate-800.card.p-6.mb-6'), // Search and filters
+    document.querySelector('header'),
+    document.getElementById('greenPlusBtn'),
+    document.getElementById('scrollToTopBtn')
+  ];
+  
+  elementsToHide.forEach(element => {
+    if (element) {
+      element.style.display = 'none';
+    }
+  });
+  
   let totalAdd = 0, totalSub = 0;
   (debtor.history || []).forEach((h) => {
     if (h.type === "add") totalAdd += h.amount || 0;
@@ -1001,14 +940,38 @@ function showPaymentModal(debtor) {
   
   document.body.appendChild(modal);
   
+  // Function to show hidden elements
+  const showHiddenElements = () => {
+    const elementsToShow = [
+      document.getElementById('debtorsList'),
+      document.querySelector('.w-full.bg-white.dark\\:bg-slate-800.card.p-6.mb-6'), // Search and filters
+      document.querySelector('header'),
+      document.getElementById('greenPlusBtn'),
+      document.getElementById('scrollToTopBtn')
+    ];
+    
+    elementsToShow.forEach(element => {
+      if (element) {
+        element.style.display = '';
+      }
+    });
+  };
+  
   // Close modal
-  modal.querySelector('#closePaymentModal').onclick = () => modal.remove();
-  modal.querySelector('#cancelPayment').onclick = () => modal.remove();
+  modal.querySelector('#closePaymentModal').onclick = () => {
+    modal.remove();
+    showHiddenElements();
+  };
+  modal.querySelector('#cancelPayment').onclick = () => {
+    modal.remove();
+    showHiddenElements();
+  };
   
   // Close modal when clicking outside
   modal.addEventListener('click', (event) => {
     if (event.target === modal) {
       modal.remove();
+      showHiddenElements();
     }
   });
   
@@ -1028,6 +991,7 @@ function showPaymentModal(debtor) {
       
       showNotification(`${debtor.name} uchun barcha qarzlar to'liq tozalandi!`, 'success');
       modal.remove();
+      showHiddenElements();
       loadDebtors();
       await updateUserTotals();
     } catch (error) {
@@ -1078,6 +1042,21 @@ function showDeleteConfirmationModal(debtor) {
   modal.id = 'deleteConfirmationModal';
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
   
+  // Hide main dashboard elements when modal opens
+  const elementsToHide = [
+    document.getElementById('debtorsList'),
+    document.querySelector('.w-full.bg-white.dark\\:bg-slate-800.card.p-6.mb-6'), // Search and filters
+    document.querySelector('header'),
+    document.getElementById('greenPlusBtn'),
+    document.getElementById('scrollToTopBtn')
+  ];
+  
+  elementsToHide.forEach(element => {
+    if (element) {
+      element.style.display = 'none';
+    }
+  });
+  
   modal.innerHTML = `
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
       <div class="flex items-center gap-3 mb-4">
@@ -1112,13 +1091,34 @@ function showDeleteConfirmationModal(debtor) {
   
   document.body.appendChild(modal);
   
+  // Function to show hidden elements
+  const showHiddenElements = () => {
+    const elementsToShow = [
+      document.getElementById('debtorsList'),
+      document.querySelector('.w-full.bg-white.dark\\:bg-slate-800.card.p-6.mb-6'), // Search and filters
+      document.querySelector('header'),
+      document.getElementById('greenPlusBtn'),
+      document.getElementById('scrollToTopBtn')
+    ];
+    
+    elementsToShow.forEach(element => {
+      if (element) {
+        element.style.display = '';
+      }
+    });
+  };
+  
   // Close modal
-  modal.querySelector('#cancelDelete').onclick = () => modal.remove();
+  modal.querySelector('#cancelDelete').onclick = () => {
+    modal.remove();
+    showHiddenElements();
+  };
   
   // Close modal when clicking outside
   modal.addEventListener('click', (event) => {
     if (event.target === modal) {
       modal.remove();
+      showHiddenElements();
     }
   });
   
@@ -1130,6 +1130,7 @@ function showDeleteConfirmationModal(debtor) {
       
       showNotification(`${debtor.name} qarzdor muvaffaqiyatli o'chirildi!`, 'success');
       modal.remove();
+      showHiddenElements();
       loadDebtors();
       await updateUserTotals();
     } catch (error) {
@@ -1141,61 +1142,59 @@ function showDeleteConfirmationModal(debtor) {
 
 // Sidebar user info
 async function showSidebarUser(user) {
-  return await withLoader(async () => {
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
+  
+  let sidebarNumber, sidebarUserCode, userName, username;
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    sidebarNumber = data.sidebarNumber || Math.floor(Math.random() * 999) + 1;
+    sidebarUserCode = data.sidebarUserCode || generateUserCode();
+    userName = data.name || user.displayName || "Foydalanuvchi";
+    username = data.username || null;
     
-    let sidebarNumber, sidebarUserCode, userName, username;
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      sidebarNumber = data.sidebarNumber || Math.floor(Math.random() * 999) + 1;
-      sidebarUserCode = data.sidebarUserCode || generateUserCode();
-      userName = data.name || user.displayName || "Foydalanuvchi";
-      username = data.username || null;
-      
-      // Update if missing
-      if (!data.sidebarNumber || !data.sidebarUserCode) {
-        await retryFirebaseOperation(() => updateDoc(userRef, {
-          sidebarNumber,
-          sidebarUserCode,
-          name: userName
-        }), 3, false);
-      }
-    } else {
-      sidebarNumber = Math.floor(Math.random() * 999) + 1;
-      sidebarUserCode = generateUserCode();
-      userName = user.displayName || "Foydalanuvchi";
-      username = null;
-      await retryFirebaseOperation(() => setDoc(userRef, {
-        name: userName,
+    // Update if missing
+    if (!data.sidebarNumber || !data.sidebarUserCode) {
+      await updateDoc(userRef, {
         sidebarNumber,
         sidebarUserCode,
-        addedSearchUsers: []
-      }), 3, false);
+        name: userName
+      });
     }
+  } else {
+    sidebarNumber = Math.floor(Math.random() * 999) + 1;
+    sidebarUserCode = generateUserCode();
+    userName = user.displayName || "Foydalanuvchi";
+    username = null;
+    await setDoc(userRef, {
+      name: userName,
+      sidebarNumber,
+      sidebarUserCode,
+      addedSearchUsers: []
+    });
+  }
   
-    // Update sidebar UI
-    const sidebarUserDiv = document.getElementById("sidebarUserInfo");
-    if (sidebarUserDiv) {
-      sidebarUserDiv.innerHTML = `
-        <div class="flex items-center gap-3">
-          <div class="relative">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-              ${userName.charAt(0)}
-            </div>
-          </div>
-          <div>
-            <div class="font-bold text-lg flex items-center gap-2">
-              <span class="truncate max-w-[120px]">${userName}</span>
-              <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
-            </div>
-            ${username ? `<div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">@${username}</div>` : ''}
-            <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
+  // Update sidebar UI
+  const sidebarUserDiv = document.getElementById("sidebarUserInfo");
+  if (sidebarUserDiv) {
+    sidebarUserDiv.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+            ${userName.charAt(0)}
           </div>
         </div>
-      `;
-    }
-  }, 'Foydalanuvchi ma\'lumotlari yuklanmoqda...');
+        <div>
+          <div class="font-bold text-lg flex items-center gap-2">
+            <span class="truncate max-w-[120px]">${userName}</span>
+            <span class="text-blue-600 dark:text-blue-300 font-extrabold text-base">#${sidebarNumber}</span>
+          </div>
+          ${username ? `<div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">@${username}</div>` : ''}
+          <div class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1">ID: <span class="tracking-widest">${sidebarUserCode}</span></div>
+        </div>
+      </div>
+    `;
+  }
 }
 
 // Generate user code
@@ -1358,13 +1357,54 @@ async function addUserWithPermission(userToAdd) {
     return;
   }
   
-  // Add user directly
+  // Add user directly without name change modal
   addedSearchUsers.push(userToAdd);
   renderAddedSearchUsers();
   saveAddedSearchUsers();
   loadDebtors(); // Refresh the debtors list to include the new user
   showNotification(`${userToAdd.name} muvaffaqiyatli qo'shildi!`, 'success');
+  
+  // Close the search modal
+  const viewDebtsModal = document.getElementById('viewDebtsModal');
+  if (viewDebtsModal) {
+    viewDebtsModal.classList.add('hidden');
+  }
+  
+  // Find or create debtor record and open detailed modal
+  try {
+    const debtorsSnap = await getDocs(collection(db, "debtors"));
+    const debtor = debtorsSnap.docs
+      .map(doc => ({ ...doc.data(), id: doc.id }))
+      .find(d => d.userId === userToAdd.id || d.code === userToAdd.id || d.id === userToAdd.id);
+
+    if (debtor) {
+      // If debtor exists, open their modal
+      openDebtorModal(debtor);
+    } else {
+      // Create a new debtor record for this user
+      const newDebtor = {
+        name: userToAdd.name || userToAdd.displayName || 'Noma\'lum',
+        userId: userToAdd.id,
+        code: userToAdd.code || generateUserCode(),
+        debts: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const docRef = await addDoc(collection(db, "debtors"), newDebtor);
+      newDebtor.id = docRef.id;
+      
+      showNotification(`${userToAdd.name} uchun yangi qarzdor yozuv yaratildi!`, 'success');
+      openDebtorModal(newDebtor);
+      await updateUserTotals();
+    }
+  } catch (error) {
+    console.error('Error creating new debtor:', error);
+    showNotification('Yangi qarzdor yaratishda xatolik yuz berdi!', 'error');
+  }
 }
+
+
 
 
 
@@ -1377,7 +1417,8 @@ function setupModalCloseButtons() {
     { id: 'closeViewDebtsModal', modal: 'viewDebtsModal' },
     { id: 'closeMyDebtsModal', modal: 'myDebtsModal' },
     { id: 'closeMessagesModal', modal: 'messagesModal' },
-    { id: 'closeAddDebtorModal', modal: 'addDebtorModal' }
+    { id: 'closeAddDebtorModal', modal: 'addDebtorModal' },
+    { id: 'closeChangeNameModal', modal: 'changeNameModal' }
   ];
   
   closeButtons.forEach(({ id, modal }) => {
@@ -1573,6 +1614,9 @@ async function loadMyDebts() {
         
         myDebts.forEach(d => {
           (d.history || []).forEach(h => {
+            // Skip deleted transactions
+            if (h.deleted) return;
+            
             const authorId = h.authorId || d.userId;
             const authorName = usersMap[authorId] || authorId || "Noma'lum";
             
@@ -1624,8 +1668,11 @@ async function loadMyDebts() {
           let authorTotalSubtracted = 0;
           
           const authorDebtsHtml = authorDebts.map(h => {
-            if (h.type === "add") authorTotalAdded += h.amount || 0;
-            if (h.type === "sub") authorTotalSubtracted += h.amount || 0;
+            // Skip deleted transactions in calculation
+            if (!h.deleted) {
+              if (h.type === "add") authorTotalAdded += h.amount || 0;
+              if (h.type === "sub") authorTotalSubtracted += h.amount || 0;
+            }
             
             // Mahsulot ma'lumotlarini olish
             const productInfo = h.product ? `
@@ -1646,10 +1693,14 @@ async function loadMyDebts() {
               </div>
             ` : '';
             
+            const isDeleted = h.deleted === true;
+            const isEdited = h.edited === true || !!h.editedAt;
             return `
-              <div class="p-3 rounded mb-2 ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
+              <div class="p-3 rounded mb-2 ${isDeleted ? 'bg-gray-100 dark:bg-gray-700 opacity-60' : (h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900")} relative">
+                ${isDeleted ? '<div class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">O\'chirilgan</div>' : ''}
+                ${!isDeleted && isEdited ? '<div class="absolute bottom-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded">O\'zgartirilgan</div>' : ''}
                 <div class="flex justify-between items-start mb-1">
-                  <b class="text-lg">${h.type === "add" ? "+" : "-"}${h.amount} so'm</b>
+                  <b class="text-lg ${isDeleted ? 'text-gray-500 dark:text-gray-400' : ''}">${h.type === "add" ? "+" : "-"}${h.amount} so'm</b>
                   <span class="text-xs text-gray-500">${h.date && h.date.toDate ? h.date.toDate().toLocaleString("uz-UZ") : ""}</span>
                 </div>
                 ${productInfo}
@@ -1837,6 +1888,21 @@ function openDebtorModal(debtor) {
   modal.id = 'debtorDetailModal';
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
   
+  // Hide main dashboard elements when modal opens
+  const elementsToHide = [
+    document.getElementById('debtorsList'),
+    document.querySelector('.w-full.bg-white.dark\\:bg-slate-800.card.p-6.mb-6'), // Search and filters
+    document.querySelector('header'),
+    document.getElementById('greenPlusBtn'),
+    document.getElementById('scrollToTopBtn')
+  ];
+  
+  elementsToHide.forEach(element => {
+    if (element) {
+      element.style.display = 'none';
+    }
+  });
+  
   const currentUserId = auth.currentUser.uid;
   
   // Filter history to only show transactions created by current user
@@ -1844,8 +1910,11 @@ function openDebtorModal(debtor) {
   
   let totalAdd = 0, totalSub = 0;
   userHistory.forEach((h) => {
-    if (h.type === "add") totalAdd += h.amount || 0;
-    if (h.type === "sub") totalSub += h.amount || 0;
+    // Only count non-deleted transactions
+    if (!h.deleted) {
+      if (h.type === "add") totalAdd += h.amount || 0;
+      if (h.type === "sub") totalSub += h.amount || 0;
+    }
   });
   
   const totalDebt = totalAdd - totalSub;
@@ -1900,21 +1969,35 @@ function openDebtorModal(debtor) {
         
         <div class="flex-1">
           <div class="font-bold mb-4 text-gray-900 dark:text-white">Barcha harakatlar</div>
-          <div class="space-y-3 max-h-96 overflow-y-auto">
+          <div class="space-y-3">
             ${userHistory.length > 0 ? 
-              userHistory.map(h => {
+              userHistory.map((h, index) => {
                 const date = h.date?.toDate ? h.date.toDate() : new Date();
                 const time = date.toLocaleString("uz-UZ");
+                const isDeleted = h.deleted === true;
+                const isEdited = h.edited === true || !!h.editedAt;
                 return `
-                  <div class="p-3 rounded-lg ${h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900"}">
-                    <div class="font-semibold ${h.type === "add" ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"}">
+                  <div class="p-3 rounded-lg ${isDeleted ? 'bg-gray-100 dark:bg-gray-700 opacity-60' : (h.type === "add" ? "bg-green-100 dark:bg-green-900" : "bg-red-100 dark:bg-red-900")} relative">
+                    ${isDeleted ? '<div class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">O\'chirilgan</div>' : ''}
+                    ${!isDeleted && isEdited ? '<div class="absolute bottom-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded">O\'zgartirilgan</div>' : ''}
+                    <div class="font-semibold ${isDeleted ? 'text-gray-500 dark:text-gray-400' : (h.type === "add" ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200")}">
                       ${h.type === "add" ? "+" : "-"}${h.amount} so'm
                     </div>
-                    ${h.product ? `<div class="text-sm text-gray-600 dark:text-gray-300">Mahsulot: ${h.product}</div>` : ""}
-                    ${h.count ? `<div class="text-sm text-gray-600 dark:text-gray-300">Miqdori: ${h.count} ta</div>` : ""}
-                    ${h.price ? `<div class="text-sm text-gray-600 dark:text-gray-300">Narxi: ${formatMoney(h.price)} so'm</div>` : ""}
-                    ${h.note ? `<div class="text-sm text-gray-500 dark:text-gray-400 mt-1">${h.note}</div>` : ""}
+                    ${h.product ? `<div class="text-sm ${isDeleted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'}">Mahsulot: ${h.product}</div>` : ""}
+                    ${h.count ? `<div class="text-sm ${isDeleted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'}">Miqdori: ${h.count} ta</div>` : ""}
+                    ${h.price ? `<div class="text-sm ${isDeleted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'}">Narxi: ${formatMoney(h.price)} so'm</div>` : ""}
+                    ${h.note ? `<div class="text-sm ${isDeleted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'} mt-1">${h.note}</div>` : ""}
                     <div class="text-xs text-gray-400 mt-2">${time}</div>
+                    ${!isDeleted ? `
+                      <div class="absolute top-2 right-2 flex gap-1">
+                        <button class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs px-2 py-1 rounded transition edit-transaction-btn" data-index="${index}" title="Tahrirlash">
+                          <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded transition delete-transaction-btn" data-index="${index}" title="O'chirish">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    ` : ''}
                   </div>
                 `;
               }).join("") : 
@@ -1949,13 +2032,184 @@ function openDebtorModal(debtor) {
   // Populate product dropdown in the modal
   populateDebtorModalProductDropdown();
   
+  // Add event listeners for delete transaction buttons
+  modal.querySelectorAll('.delete-transaction-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const index = parseInt(btn.getAttribute('data-index'));
+      
+      if (confirm('Bu harakatni o\'chirishni xohlaysizmi?')) {
+        try {
+          // Mark the transaction as deleted
+          const updatedHistory = [...userHistory];
+          updatedHistory[index] = { ...updatedHistory[index], deleted: true };
+          
+          const ref = doc(db, "debtors", debtor.id);
+          await updateDoc(ref, {
+            history: updatedHistory
+          });
+          
+          showNotification('Harakat o\'chirildi!', 'success');
+          
+          // Update the debtor object with new data
+          debtor.history = updatedHistory;
+          
+          // Refresh the modal content
+          modal.remove();
+          openDebtorModal(debtor);
+          
+          // Update the main debtors list in background
+          loadDebtors();
+          await updateUserTotals();
+        } catch (error) {
+          console.error('Error deleting transaction:', error);
+          showNotification('Harakatni o\'chirishda xatolik yuz berdi!', 'error');
+        }
+      }
+    });
+  });
+
+  // Add event listeners for edit transaction buttons
+  modal.querySelectorAll('.edit-transaction-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const index = parseInt(btn.getAttribute('data-index'));
+      const tx = userHistory[index];
+      if (!tx || tx.deleted) return;
+
+      // Build edit modal
+      const editModal = document.createElement('div');
+      editModal.id = 'editTransactionModal';
+      editModal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50';
+
+      const isAdd = tx.type === 'add';
+      const initialCount = Number.isFinite(tx.count) && tx.count > 0 ? tx.count : 1;
+      const initialPrice = Number.isFinite(tx.price) && tx.price > 0 ? tx.price : (isAdd ? Math.round((tx.amount || 0) / initialCount) : 0);
+
+      editModal.innerHTML = `
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-5 border border-slate-200 dark:border-slate-700">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Harakatni tahrirlash</h3>
+            <button id="closeEditTx" class="text-slate-500 hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"><i class="fas fa-times"></i></button>
+          </div>
+          <div class="text-xs mb-3 text-slate-600 dark:text-slate-300">Turi: <span class="font-semibold ${isAdd ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">${isAdd ? 'Qo\'shish' : 'Ayirish'}</span></div>
+          <form id="editTxForm" class="space-y-3">
+            ${isAdd ? `
+              <div>
+                <label class="block text-slate-700 dark:text-slate-300 mb-1">Mahsulot</label>
+                <input id="editTxProduct" type="text" value="${tx.product || ''}" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" autocomplete="off">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-700 dark:text-slate-300 mb-1">Miqdori</label>
+                  <input id="editTxCount" type="number" min="1" value="${initialCount}" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" autocomplete="off">
+                </div>
+                <div>
+                  <label class="block text-slate-700 dark:text-slate-300 mb-1">Narxi (so'm)</label>
+                  <input id="editTxPrice" type="number" min="1" value="${initialPrice}" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" autocomplete="off">
+                </div>
+              </div>
+            ` : `
+              <div>
+                <label class="block text-slate-700 dark:text-slate-300 mb-1">Miqdor (so'm)</label>
+                <input id="editTxAmount" type="number" min="1" value="${tx.amount || 0}" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" autocomplete="off">
+              </div>
+            `}
+            <div>
+              <label class="block text-slate-700 dark:text-slate-300 mb-1">Izoh</label>
+              <input id="editTxNote" type="text" value="${tx.note || ''}" class="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-white" autocomplete="off">
+            </div>
+            <div class="flex gap-3 pt-2">
+              <button type="button" id="cancelEditTx" class="flex-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2 rounded-lg transition">Bekor qilish</button>
+              <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition">Saqlash</button>
+            </div>
+          </form>
+        </div>
+      `;
+
+      document.body.appendChild(editModal);
+
+      const closeEdit = () => editModal.remove();
+      editModal.querySelector('#closeEditTx').onclick = closeEdit;
+      editModal.querySelector('#cancelEditTx').onclick = closeEdit;
+      editModal.addEventListener('click', (evt) => { if (evt.target === editModal) closeEdit(); });
+
+      editModal.querySelector('#editTxForm').onsubmit = async (evt) => {
+        evt.preventDefault();
+
+        try {
+          let updated = { ...tx };
+          if (isAdd) {
+            const product = editModal.querySelector('#editTxProduct').value.trim();
+            let count = parseInt(editModal.querySelector('#editTxCount').value, 10);
+            let price = parseInt(editModal.querySelector('#editTxPrice').value, 10);
+            if (!Number.isFinite(count) || count <= 0) count = 1;
+            if (!Number.isFinite(price) || price <= 0) price = 1;
+            const amount = count * price;
+            updated = { ...updated, product, count, price, amount };
+          } else {
+            let amount = parseInt(editModal.querySelector('#editTxAmount').value, 10);
+            if (!Number.isFinite(amount) || amount <= 0) amount = tx.amount || 1;
+            updated = { ...updated, amount };
+          }
+          const note = editModal.querySelector('#editTxNote').value.trim();
+          updated.note = note;
+          // mark as edited
+          updated.edited = true;
+          try { updated.editedAt = Timestamp.now(); } catch (_) {}
+          updated.lastEditedBy = (auth.currentUser && auth.currentUser.uid) ? auth.currentUser.uid : updated.lastEditedBy;
+
+          // Update filtered history used in the modal (keeps behavior consistent with delete flow)
+          const updatedHistory = [...userHistory];
+          updatedHistory[index] = updated;
+
+          const ref = doc(db, 'debtors', debtor.id);
+          await updateDoc(ref, { history: updatedHistory });
+
+          // Update in-memory and refresh UI
+          debtor.history = updatedHistory;
+          showNotification('Harakat muvaffaqiyatli yangilandi!', 'success');
+          closeEdit();
+          modal.remove();
+          openDebtorModal(debtor);
+          loadDebtors();
+          await updateUserTotals();
+        } catch (error) {
+          console.error('Error updating transaction:', error);
+          showNotification('Harakatni yangilashda xatolik yuz berdi!', 'error');
+        }
+      };
+    });
+  });
+  
+  // Function to show hidden elements
+  const showHiddenElements = () => {
+    const elementsToShow = [
+      document.getElementById('debtorsList'),
+      document.querySelector('.w-full.bg-white.dark\\:bg-slate-800.card.p-6.mb-6'), // Search and filters
+      document.querySelector('header'),
+      document.getElementById('greenPlusBtn'),
+      document.getElementById('scrollToTopBtn')
+    ];
+    
+    elementsToShow.forEach(element => {
+      if (element) {
+        element.style.display = '';
+      }
+    });
+  };
+  
   // Close modal
-  modal.querySelector('#closeDebtorModal').onclick = () => modal.remove();
+  modal.querySelector('#closeDebtorModal').onclick = () => {
+    modal.remove();
+    showHiddenElements();
+  };
   
   // Close modal when clicking outside
   modal.addEventListener('click', (event) => {
     if (event.target === modal) {
       modal.remove();
+      showHiddenElements();
     }
   });
   
@@ -2003,7 +2257,29 @@ function openDebtorModal(debtor) {
       });
       
       showNotification('Qarz muvaffaqiyatli qo\'shildi!', 'success');
+      
+      // Update the debtor object with new data
+      debtor.history = debtor.history || [];
+      debtor.history.push({
+        type: "add",
+        amount,
+        count,
+        price,
+        product,
+        note,
+        date: Timestamp.now(),
+        authorId: auth.currentUser.uid
+      });
+      debtor.totalAdded = (debtor.totalAdded || 0) + amount;
+      
+      // Clear the form
+      e.target.reset();
+      
+      // Refresh the modal content instead of closing it
       modal.remove();
+      openDebtorModal(debtor);
+      
+      // Update the main debtors list in background
       loadDebtors();
       await updateUserTotals();
     } catch (error) {
@@ -2035,7 +2311,26 @@ function openDebtorModal(debtor) {
       });
       
       showNotification('Qarz muvaffaqiyatli ayirildi!', 'success');
+      
+      // Update the debtor object with new data
+      debtor.history = debtor.history || [];
+      debtor.history.push({
+        type: "sub",
+        amount: val,
+        note,
+        date: Timestamp.now(),
+        authorId: auth.currentUser.uid
+      });
+      debtor.totalSubtracted = (debtor.totalSubtracted || 0) + val;
+      
+      // Clear the form
+      e.target.reset();
+      
+      // Refresh the modal content instead of closing it
       modal.remove();
+      openDebtorModal(debtor);
+      
+      // Update the main debtors list in background
       loadDebtors();
       await updateUserTotals();
     } catch (error) {
@@ -2059,7 +2354,17 @@ function openDebtorModal(debtor) {
             });
             
             showNotification('Qarz muvaffaqiyatli tugatildi!', 'success');
+            
+            // Update the debtor object with new data
+            debtor.history = [];
+            debtor.totalAdded = 0;
+            debtor.totalSubtracted = 0;
+            
+            // Refresh the modal content instead of closing it
             modal.remove();
+            openDebtorModal(debtor);
+            
+            // Update the main debtors list in background
             loadDebtors();
             await updateUserTotals();
           } catch (error) {
@@ -2077,30 +2382,33 @@ async function loadUserTotals() {
   const user = auth.currentUser;
   if (!user) return;
 
-  return await withLoader(async () => {
-    try {
-      // First try to get from user document
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
-      
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        if (userData.totalAdded !== undefined && userData.totalSubtracted !== undefined && userData.totalDebt !== undefined) {
-          // Update UI with stored totals
-          updateTotalsUI(userData.totalAdded, userData.totalSubtracted, userData.totalDebt, userData.debtorsCount || 0);
-          return;
-        }
-      }
-      
-      // If no stored totals, calculate from debtors
-      await updateUserTotals();
-    } catch (error) {
-      console.error('Error loading user totals:', error);
-      if (error.code === 'unavailable' || error.code === 'permission-denied') {
-        showNetworkError();
+  if (!checkNetworkConnectivity()) {
+    showNetworkError();
+    return;
+  }
+
+  try {
+    // First try to get from user document
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      if (userData.totalAdded !== undefined && userData.totalSubtracted !== undefined && userData.totalDebt !== undefined) {
+        // Update UI with stored totals
+        updateTotalsUI(userData.totalAdded, userData.totalSubtracted, userData.totalDebt, userData.debtorsCount || 0);
+        return;
       }
     }
-  }, 'Ma\'lumotlar yuklanmoqda...');
+    
+    // If no stored totals, calculate from debtors
+    await updateUserTotals();
+  } catch (error) {
+    console.error('Error loading user totals:', error);
+    if (error.code === 'unavailable' || error.code === 'permission-denied') {
+      showNetworkError();
+    }
+  }
 }
 
 // Update totals UI
@@ -2124,57 +2432,60 @@ async function updateUserTotals() {
   const user = auth.currentUser;
   if (!user) return;
 
-  return await withLoader(async () => {
-    try {
-      // Get all debtors for this user
-      const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")), 3, false);
-      let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.userId === user.uid) {
-          // Filter history to only include transactions created by current user
-          const userHistory = (data.history || []).filter(h => h.authorId === user.uid);
-          
-          // Calculate totals only from user's own transactions
-          userHistory.forEach(h => {
-            if (h.type === "add") totalAdded += h.amount || 0;
-            if (h.type === "sub") totalSubtracted += h.amount || 0;
-          });
-        }
-      });
+  if (!checkNetworkConnectivity()) {
+    showNetworkError();
+    return;
+  }
 
-      // Removed addedSearchUsers logic - only show current user's transactions
-
-      totalDebt = totalAdded - totalSubtracted;
-
-      // Count debtors
-      const debtorsCount = snapshot.docs.filter(doc => {
-        const data = doc.data();
-        return data.userId === user.uid;
-      }).length;
-
-      // Update user document with totals
-      const userRef = doc(db, "users", user.uid);
-      await retryFirebaseOperation(() => updateDoc(userRef, {
-        totalAdded,
-        totalSubtracted,
-        totalDebt,
-        debtorsCount,
-        lastUpdated: Timestamp.now()
-      }), 3, false);
-
-      // Update UI
-      updateTotalsUI(totalAdded, totalSubtracted, totalDebt, debtorsCount);
-      
-      return { totalAdded, totalSubtracted, totalDebt, debtorsCount };
-    } catch (error) {
-      console.error('Error updating user totals:', error);
-      if (error.code === 'unavailable' || error.code === 'permission-denied') {
-        showNetworkError();
+  try {
+    // Get all debtors for this user
+    const snapshot = await retryFirebaseOperation(() => getDocs(collection(db, "debtors")));
+    let totalAdded = 0, totalSubtracted = 0, totalDebt = 0;
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.userId === user.uid) {
+        // Filter history to only include transactions created by current user
+        const userHistory = (data.history || []).filter(h => h.authorId === user.uid);
+        
+        // Calculate totals only from user's own transactions
+        userHistory.forEach(h => {
+          if (h.type === "add") totalAdded += h.amount || 0;
+          if (h.type === "sub") totalSubtracted += h.amount || 0;
+        });
       }
+    });
+
+    // Removed addedSearchUsers logic - only show current user's transactions
+
+    totalDebt = totalAdded - totalSubtracted;
+
+    // Count debtors
+    const debtorsCount = snapshot.docs.filter(doc => {
+      const data = doc.data();
+      return data.userId === user.uid;
+    }).length;
+
+    // Update user document with totals
+    const userRef = doc(db, "users", user.uid);
+    await retryFirebaseOperation(() => updateDoc(userRef, {
+      totalAdded,
+      totalSubtracted,
+      totalDebt,
+      debtorsCount,
+      lastUpdated: Timestamp.now()
+    }));
+
+    // Update UI
+    updateTotalsUI(totalAdded, totalSubtracted, totalDebt, debtorsCount);
+    
+    return { totalAdded, totalSubtracted, totalDebt, debtorsCount };
+  } catch (error) {
+    console.error('Error updating user totals:', error);
+    if (error.code === 'unavailable' || error.code === 'permission-denied') {
+      showNetworkError();
     }
-  }, 'Ma\'lumotlar yangilanmoqda...');
+  }
 }
 
 // Initialize the app when DOM is loaded
@@ -2185,23 +2496,21 @@ document.addEventListener('DOMContentLoaded', initApp);
 
 // Load all users from Firebase
 async function loadAllUsers() {
-  return await withLoader(async () => {
-    try {
-      const usersSnap = await retryFirebaseOperation(() => getDocs(collection(db, "users")), 3, false);
-      allUsers = usersSnap.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: data.sidebarUserCode || doc.id,
-          name: data.name || "Noma'lum",
-          number: data.sidebarNumber || "",
-          userId: doc.id,
-          username: data.username || null
-        };
-      });
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  }, 'Foydalanuvchilar yuklanmoqda...');
+  try {
+    const usersSnap = await retryFirebaseOperation(() => getDocs(collection(db, "users")));
+    allUsers = usersSnap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.sidebarUserCode || doc.id,
+        name: data.name || "Noma'lum",
+        number: data.sidebarNumber || "",
+        userId: doc.id,
+        username: data.username || null
+      };
+    });
+  } catch (error) {
+    console.error('Error loading users:', error);
+  }
 }
 
 
@@ -2301,18 +2610,16 @@ async function loadAddedSearchUsers() {
   const user = auth.currentUser;
   if (!user) return;
   
-  return await withLoader(async () => {
-    try {
-      const userRef = doc(db, "users", user.uid);
-      const snap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
-      if (snap.exists() && Array.isArray(snap.data().addedSearchUsers)) {
-        addedSearchUsers = snap.data().addedSearchUsers;
-        renderAddedSearchUsers();
-      }
-    } catch (error) {
-      console.error('Error loading added search users:', error);
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists() && Array.isArray(snap.data().addedSearchUsers)) {
+      addedSearchUsers = snap.data().addedSearchUsers;
+      renderAddedSearchUsers();
     }
-  }, 'Qidiruv foydalanuvchilari yuklanmoqda...');
+  } catch (error) {
+    console.error('Error loading added search users:', error);
+  }
 }
 
 // Save added search users to Firebase
@@ -2320,14 +2627,12 @@ async function saveAddedSearchUsers() {
   const user = auth.currentUser;
   if (!user) return;
   
-  return await withLoader(async () => {
-    try {
-      const userRef = doc(db, "users", user.uid);
-      await retryFirebaseOperation(() => updateDoc(userRef, { addedSearchUsers }), 3, false);
-    } catch (error) {
-      console.error('Error saving added search users:', error);
-    }
-  }, 'Qidiruv foydalanuvchilari saqlanmoqda...');
+  try {
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, { addedSearchUsers });
+  } catch (error) {
+    console.error('Error saving added search users:', error);
+  }
 }
 
 // Render added search users
@@ -2527,18 +2832,16 @@ async function loadUserProducts() {
   const user = auth.currentUser;
   if (!user) return;
   
-  return await withLoader(async () => {
-    try {
-      const userRef = doc(db, "users", user.uid);
-      const snap = await retryFirebaseOperation(() => getDoc(userRef), 3, false);
-      if (snap.exists() && Array.isArray(snap.data().products)) {
-        userProducts = snap.data().products;
-        renderProductsList();
-      }
-    } catch (error) {
-      console.error('Error loading user products:', error);
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists() && Array.isArray(snap.data().products)) {
+      userProducts = snap.data().products;
+      renderProductsList();
     }
-  }, 'Mahsulotlar yuklanmoqda...');
+  } catch (error) {
+    console.error('Error loading user products:', error);
+  }
 }
 
 // Save user products to Firebase
@@ -2546,14 +2849,12 @@ async function saveUserProducts() {
   const user = auth.currentUser;
   if (!user) return;
   
-  return await withLoader(async () => {
-    try {
-      const userRef = doc(db, "users", user.uid);
-      await retryFirebaseOperation(() => updateDoc(userRef, { products: userProducts }), 3, false);
-    } catch (error) {
-      console.error('Error saving user products:', error);
-    }
-  }, 'Mahsulotlar saqlanmoqda...');
+  try {
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, { products: userProducts });
+  } catch (error) {
+    console.error('Error saving user products:', error);
+  }
 }
 
 // Render products list
@@ -2608,29 +2909,27 @@ async function addProductToFirebase(name, price) {
     return;
   }
   
-  return await withLoader(async () => {
-    // Check if product already exists
-    const existingProduct = userProducts.find(p => p.name.toLowerCase() === name.toLowerCase());
-    if (existingProduct) {
-      showNotification('Bu mahsulot allaqachon mavjud!', 'error');
-      return;
-    }
-    
-    // Add to array
-    userProducts.push({
-      name: name,
-      price: price,
-      createdAt: new Date()
-    });
-    
-    // Save to Firebase
-    await saveUserProducts();
-    
-    // Re-render the list
-    renderProductsList();
-    
-    showNotification('Mahsulot muvaffaqiyatli qo\'shildi!', 'success');
-  }, 'Mahsulot qo\'shilmoqda...');
+  // Check if product already exists
+  const existingProduct = userProducts.find(p => p.name.toLowerCase() === name.toLowerCase());
+  if (existingProduct) {
+    showNotification('Bu mahsulot allaqachon mavjud!', 'error');
+    return;
+  }
+  
+  // Add to array
+  userProducts.push({
+    name: name,
+    price: price,
+    createdAt: new Date()
+  });
+  
+  // Save to Firebase
+  await saveUserProducts();
+  
+  // Re-render the list
+  renderProductsList();
+  
+  showNotification('Mahsulot muvaffaqiyatli qo\'shildi!', 'success');
 }
 
 // Populate product dropdown
@@ -2810,29 +3109,27 @@ window.editProduct = async function(index) {
       return;
     }
     
-    await withLoader(async () => {
-      try {
-        // Update product
-        userProducts[index] = {
-          ...product,
-          name: newName,
-          price: newPrice,
-          updatedAt: new Date()
-        };
-        
-        // Save to Firebase
-        await saveUserProducts();
-        
-        // Re-render the list
-        renderProductsList();
-        
-        showNotification('Mahsulot muvaffaqiyatli yangilandi!', 'success');
-        modal.remove();
-      } catch (error) {
-        console.error('Error updating product:', error);
-        showNotification('Mahsulotni yangilashda xatolik yuz berdi!', 'error');
-      }
-    }, 'Mahsulot yangilanmoqda...');
+    try {
+      // Update product
+      userProducts[index] = {
+        ...product,
+        name: newName,
+        price: newPrice,
+        updatedAt: new Date()
+      };
+      
+      // Save to Firebase
+      await saveUserProducts();
+      
+      // Re-render the list
+      renderProductsList();
+      
+      showNotification('Mahsulot muvaffaqiyatli yangilandi!', 'success');
+      modal.remove();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      showNotification('Mahsulotni yangilashda xatolik yuz berdi!', 'error');
+    }
   };
 }
 
@@ -2843,18 +3140,16 @@ window.populateDebtorModalProductDropdown = populateDebtorModalProductDropdown;
 // Remove product function (for compatibility with HTML onclick)
 window.removeProduct = async function(index) {
   if (confirm('Bu mahsulotni o\'chirishni xohlaysizmi?')) {
-    await withLoader(async () => {
-      // Remove from array
-      userProducts.splice(index, 1);
-      
-      // Save to Firebase
-      await saveUserProducts();
-      
-      // Re-render the list
-      renderProductsList();
-      
-      showNotification('Mahsulot muvaffaqiyatli o\'chirildi!', 'success');
-    }, 'Mahsulot o\'chirilmoqda...');
+    // Remove from array
+    userProducts.splice(index, 1);
+    
+    // Save to Firebase
+    await saveUserProducts();
+    
+    // Re-render the list
+    renderProductsList();
+    
+    showNotification('Mahsulot muvaffaqiyatli o\'chirildi!', 'success');
   }
 };
 
